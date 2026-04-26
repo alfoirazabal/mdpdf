@@ -14,7 +14,7 @@ async fn main() -> Result<()> {
     let md = fs::read_to_string(input_path)?;
 
     let html_body = markdown::to_html(&md)?;
-    let full_html = template::wrap_html(&html_body);
+    let full_html = template::wrap_html_mobile_template(&html_body);
 
     let temp_html = "temp.html";
 
