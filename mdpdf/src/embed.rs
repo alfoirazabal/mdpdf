@@ -1,21 +1,93 @@
 use anyhow::Result;
-use lopdf::{Document, Object};
+use lopdf::{Document};
 use std::fs;
+
+const SOURCE_MD_FILE_NAME: &str = "SOURCE_MD_FILE.md";
+
+fn create_embedded_file(
+    doc: &mut lopdf::Document,
+    data: Vec<u8>,
+) -> lopdf::ObjectId {
+    let mut ef_dict = lopdf::Dictionary::new();
+    ef_dict.set("Type", "EmbeddedFile");
+
+    let ef_stream = lopdf::Stream::new(ef_dict, data);
+    doc.add_object(ef_stream)
+}
+
+fn create_filespec(
+    doc: &mut lopdf::Document,
+    ef_ref: lopdf::ObjectId,
+) -> lopdf::ObjectId {
+    let mut filespec = lopdf::Dictionary::new();
+    filespec.set("Type", "Filespec");
+    filespec.set("F", lopdf::Object::string_literal(SOURCE_MD_FILE_NAME));
+    filespec.set("UF", lopdf::Object::string_literal(SOURCE_MD_FILE_NAME));
+
+    let mut ef_entry = lopdf::Dictionary::new();
+    ef_entry.set("F", ef_ref);
+
+    filespec.set("EF", ef_entry);
+
+    doc.add_object(filespec)
+}
+
+fn create_embedded_files_tree(
+    doc: &mut lopdf::Document,
+    file_name: &str,
+    filespec_ref: lopdf::ObjectId,
+) -> lopdf::ObjectId {
+    let mut names_array = Vec::new();
+    names_array.push(lopdf::Object::string_literal(file_name));
+    names_array.push(lopdf::Object::Reference(filespec_ref));
+
+    let mut embedded_files = lopdf::Dictionary::new();
+    embedded_files.set("Names", lopdf::Object::Array(names_array));
+
+    doc.add_object(embedded_files)
+}
+
+fn attach_to_catalog(
+    doc: &mut lopdf::Document,
+    embedded_files_ref: lopdf::ObjectId,
+) -> lopdf::Result<()> {
+    let catalog_id = doc.trailer.get(b"Root")?.as_reference()?;
+
+    // Step 1: check if Names exists WITHOUT holding borrow
+    let names_ref_opt = {
+        let catalog = doc.get_object(catalog_id)?.as_dict()?;
+        catalog.get(b"Names").ok().and_then(|n| n.as_reference().ok())
+    };
+
+    // Step 2: create Names if needed
+    let names_ref = if let Some(r) = names_ref_opt {
+        r
+    } else {
+        let new_names_ref = doc.add_object(lopdf::Dictionary::new());
+
+        // now re-borrow catalog to set it
+        let catalog = doc.get_object_mut(catalog_id)?.as_dict_mut()?;
+        catalog.set("Names", new_names_ref);
+
+        new_names_ref
+    };
+
+    // Step 3: modify Names dict
+    let names_dict = doc.get_object_mut(names_ref)?.as_dict_mut()?;
+    names_dict.set("EmbeddedFiles", embedded_files_ref);
+
+    Ok(())
+}
 
 pub fn attach_file(pdf_path: &str, file_path: &str) -> Result<()> {
     let mut doc = Document::load(pdf_path)?;
     let data = fs::read(file_path)?;
 
-    // Very minimal embedding (can be expanded later)
-    let file_stream = lopdf::Stream::new(
-        lopdf::Dictionary::new(),
-        data,
-    );
+    let ef_ref = create_embedded_file(&mut doc, data);
+    let filespec_ref = create_filespec(&mut doc, ef_ref);
+    let tree_ref = create_embedded_files_tree(&mut doc, file_path, filespec_ref);
 
-    let file_id = doc.add_object(file_stream);
-
-    // NOTE: Proper embedding requires FileSpec + Names dictionary
-    // This is a placeholder minimal step — extend later
+    attach_to_catalog(&mut doc, tree_ref)?;
 
     doc.save(pdf_path)?;
     Ok(())
