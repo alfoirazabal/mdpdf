@@ -11,16 +11,12 @@ use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
 
-fn get_template_type(template_type_string: Option<String>) -> templates::TemplateType {
-    return match template_type_string.as_deref() {
-        Some("mobile-light") => templates::TemplateType::MobileLight,
-        Some("mobile-dark") => templates::TemplateType::MobileDark,
-        Some("tablet-dark") => templates::TemplateType::TabletDark,
+fn get_template_type(template_type_string: Option<cli::Template>) -> templates::TemplateType {
+    return match template_type_string {
+        Some(cli::Template::MobileLight) => templates::TemplateType::MobileLight,
+        Some(cli::Template::MobileDark) => templates::TemplateType::MobileDark,
+        Some(cli::Template::TabletDark) => templates::TemplateType::TabletDark,
         None => templates::TemplateType::MobileDark,
-        Some(unknown_type) => {
-            std::eprintln!("Template type '{}' is unrecognized", &unknown_type);
-            std::process::exit(1)
-        }
     };
 }
 

@@ -1,11 +1,21 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(name = "mdpdf")]
-#[command(author, version, about)]
+#[command(author = "Alfonso Irazabal Levy", version = "1.0", about = "MDPDF - Convert Markdown to PDF and vice versa - By Alfonso Irazabal Levy - V 1.0")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum Template {
+    /// A dark template for mobile phones
+    MobileDark,
+    /// A light template for mobile phones
+    MobileLight,
+    /// A dark template for tablets
+    TabletDark
 }
 
 #[derive(Subcommand)]
@@ -21,7 +31,7 @@ pub enum Commands {
 
         /// Template name
         #[arg(short, long)]
-        template: Option<String>,
+        template: Option<Template>,
     },
 
     /// Extract embedded Markdown from PDF
