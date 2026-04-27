@@ -37,7 +37,10 @@ pub fn extract_file(
 
             let stream = doc.get_object(file_stream_ref)?.as_stream()?;
 
-            let data = stream.decompressed_content()?;
+            let data = match stream.decompressed_content() {
+                Ok(data) => data,
+                Err(_) => stream.content.clone(),
+            };
 
             let mut file = File::create(output_path)?;
             file.write_all(&data)?;
