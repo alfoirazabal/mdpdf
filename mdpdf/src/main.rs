@@ -59,6 +59,14 @@ async fn main() -> Result<()> {
             println!("Attaching MD to PDF...");
             embed::attach_file(&output, &input)?;
 
+            match fs::remove_file(&temp_html) {
+                Ok(()) => { }
+                Err(e) => {
+                    eprintln!("Cannot delete temporary `temp.html` file: {}", e);
+                    std::process::exit(1);
+                }
+            }
+
             println!("Done: {}", output);
         }
         Commands::Extract { input, output } => {
