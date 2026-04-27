@@ -2,7 +2,7 @@ use anyhow::Result;
 use lopdf::{Document};
 use std::fs;
 
-const SOURCE_MD_FILE_NAME: &str = "SOURCE_MD_FILE.md";
+pub const SOURCE_MD_FILE_NAME: &str = "SOURCE_MD_FILE.md";
 
 fn create_embedded_file(
     doc: &mut lopdf::Document,
@@ -85,10 +85,11 @@ pub fn attach_file(pdf_path: &str, file_path: &str) -> Result<()> {
 
     let ef_ref = create_embedded_file(&mut doc, data);
     let filespec_ref = create_filespec(&mut doc, ef_ref);
-    let tree_ref = create_embedded_files_tree(&mut doc, file_path, filespec_ref);
+    let tree_ref = create_embedded_files_tree(&mut doc, SOURCE_MD_FILE_NAME, filespec_ref);
 
     attach_to_catalog(&mut doc, tree_ref)?;
 
+    doc.compress();
     doc.save(pdf_path)?;
     Ok(())
 }
