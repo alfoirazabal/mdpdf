@@ -18,6 +18,7 @@ pub async fn html_to_pdf(input: &str, output: &str) -> Result<()> {
         margin_bottom: Some(0.0),
         margin_left: Some(0.0),
         margin_right: Some(0.0),
+        generate_document_outline: Some(true),
         prefer_css_page_size: Some(true),
         display_header_footer: Some(false),
         print_background: Some(true),
