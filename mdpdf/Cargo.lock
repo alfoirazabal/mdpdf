@@ -1121,6 +1121,7 @@ dependencies = [
  "headless_chrome",
  "lopdf",
  "tokio",
+ "url",
 ]
 
 [[package]]

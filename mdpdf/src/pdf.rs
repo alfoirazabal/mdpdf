@@ -1,16 +1,17 @@
 use anyhow::Result;
 use headless_chrome::{Browser, LaunchOptions};
-use std::path::Path;
+use url::Url;
 
 pub async fn html_to_pdf(input: &str, output: &str) -> Result<()> {
 
-    let path = std::fs::canonicalize(Path::new(input))?;
-    let url = format!("file://{}", path.to_string_lossy());
+    let path = std::fs::canonicalize(input)?;
+    let url = Url::from_file_path(&path)
+        .map_err(|_| anyhow::anyhow!("Invalid file path"))?;
 
     let browser = Browser::new(LaunchOptions::default())?;
     let tab = browser.new_tab()?;
 
-    tab.navigate_to(&url)?;
+    tab.navigate_to(&url.as_str())?;
     tab.wait_until_navigated()?;
 
     let options = headless_chrome::types::PrintToPdfOptions {

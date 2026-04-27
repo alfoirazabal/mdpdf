@@ -10,3 +10,4 @@ anyhow = "1.0.102"
 lopdf = "0.40.0"
 headless_chrome = "1.0.21"
 clap = { version = "4", feature = ["derive"] }
+url = "2.5.8"
