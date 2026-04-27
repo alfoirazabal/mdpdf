@@ -3,12 +3,31 @@ const KATEX_JS: &str = include_str!("../assets/katex.min.js");
 const AUTO_RENDER_JS: &str = include_str!("../assets/auto-render.min.js");
 const RENDER_MATH_IN_ELEMENT_CALLER: &str = include_str!("../assets/calls/render-math-in-element-caller.js");
 
-pub fn wrap_html_mobile_template(body: &str) -> String {
-    format!(
+const CSS_STYLE_MOBILE_DARK: &str = include_str!("../assets/styles/style-mobile-dark.css");
+const CSS_STYLE_MOBILE_LIGHT: &str = include_str!("../assets/styles/style-mobile-light.css");
+
+pub enum TemplateType {
+  MobileDark,
+  MobileLight
+}
+
+fn get_css_style(template_type: TemplateType) -> &'static str {
+  match template_type {
+    TemplateType::MobileDark => CSS_STYLE_MOBILE_DARK,
+    TemplateType::MobileLight => CSS_STYLE_MOBILE_LIGHT
+  }
+}
+
+pub fn wrap_html_mobile_template(body: &str, title: &str, template_type: TemplateType) -> String {
+
+  let template = get_css_style(template_type);
+
+  format!(
 r#"<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<title>{}</title>
 
 <style>
 {}
@@ -24,24 +43,7 @@ r#"<!DOCTYPE html>
 </script>
 
 <style>
-@page {{
-  size: 4.5in 10in;
-}}
-
-body {{
-  font-family: system-ui;
-  line-height: 1.6;
-  background: #121212;
-  color: #eaeaea;
-  margin: 24px;
-}}
-
-pre {{
-  background: #1e1e1e;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-}}
+{}
 </style>
 
 </head>
@@ -49,10 +51,12 @@ pre {{
 {}
 </body>
 </html>"#,
-        KATEX_CSS,
-        KATEX_JS,
-        AUTO_RENDER_JS,
-        RENDER_MATH_IN_ELEMENT_CALLER,
-        body
-    )
+    title,
+    KATEX_CSS,
+    KATEX_JS,
+    AUTO_RENDER_JS,
+    RENDER_MATH_IN_ELEMENT_CALLER,
+    template,
+    body
+  )
 }
