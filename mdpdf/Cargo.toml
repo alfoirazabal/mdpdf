@@ -11,3 +11,10 @@ lopdf = "0.40.0"
 headless_chrome = "1.0.21"
 clap = { version = "4", feature = ["derive"] }
 url = "2.5.8"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
