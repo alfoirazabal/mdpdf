@@ -1,13 +1,13 @@
 @page {
   size: 3.5in 7.78in;
+  background: #eaeaea;
+  margin: 24px;
 }
 
 body {
   font-family: system-ui;
   line-height: 1.75;
-  background: #eaeaea;
   color: #121212;
-  margin: 24px;
   text-align: justify;
 }
 
