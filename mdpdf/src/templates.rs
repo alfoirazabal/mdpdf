@@ -9,6 +9,13 @@ const CSS_STYLE_MOBILE_DARK: &str = include_str!("../assets/styles/style-mobile-
 const CSS_STYLE_MOBILE_LIGHT: &str = include_str!("../assets/styles/style-mobile-light.css");
 const CSS_STYLE_TABLET_DARK: &str = include_str!("../assets/styles/style-tablet-dark.css");
 const CSS_STYLE_TABLET_LIGHT: &str = include_str!("../assets/styles/style-tablet-light.css");
+const CSS_STYLE_WIDESCREEN_DARK: &str = include_str!("../assets/styles/style-widescreen-dark.css");
+const CSS_STYLE_WIDESCREEN_LIGHT: &str = include_str!("../assets/styles/style-widescreen-light.css");
+const CSS_STYLE_WIDESCREEN_CUT_DARK: &str = include_str!("../assets/styles/style-widescreen-dark-cut.css");
+const CSS_STYLE_WIDESCREEN_CUT_LIGHT: &str = include_str!("../assets/styles/style-widescreen-light-cut.css");
+const CSS_STYLE_PRINT_A4_DARK: &str = include_str!("../assets/styles/style-print-a4-dark.css");
+const CSS_STYLE_PRINT_A4_LIGHT: &str = include_str!("../assets/styles/style-print-a4-light.css");
+const CSS_STYLE_PRINT_A4: &str = include_str!("../assets/styles/style-print-a4.css");
 
 fn get_css_style(template_type: Option<Template>) -> &'static str {
   match template_type {
@@ -16,7 +23,14 @@ fn get_css_style(template_type: Option<Template>) -> &'static str {
     Some(Template::MobileLight) => CSS_STYLE_MOBILE_LIGHT,
     Some(Template::TabletDark) => CSS_STYLE_TABLET_DARK,
     Some(Template::TabletLight) => CSS_STYLE_TABLET_LIGHT,
-    None => CSS_STYLE_MOBILE_DARK
+    Some(Template::WidescreenDark) => CSS_STYLE_WIDESCREEN_DARK,
+    Some(Template::WidescreenLight) => CSS_STYLE_WIDESCREEN_LIGHT,
+    Some(Template::WidescreenCutDark) => CSS_STYLE_WIDESCREEN_CUT_DARK,
+    Some(Template::WidescreenCutLight) => CSS_STYLE_WIDESCREEN_CUT_LIGHT,
+    Some(Template::PrintA4Dark) => CSS_STYLE_PRINT_A4_DARK,
+    Some(Template::PrintA4Light) => CSS_STYLE_PRINT_A4_LIGHT,
+    Some(Template::PrintA4) => CSS_STYLE_PRINT_A4,
+    None => CSS_STYLE_PRINT_A4
   }
 }
 
