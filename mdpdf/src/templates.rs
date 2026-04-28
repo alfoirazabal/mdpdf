@@ -8,12 +8,14 @@ const RENDER_MATH_IN_ELEMENT_CALLER: &str = include_str!("../assets/calls/render
 const CSS_STYLE_MOBILE_DARK: &str = include_str!("../assets/styles/style-mobile-dark.css");
 const CSS_STYLE_MOBILE_LIGHT: &str = include_str!("../assets/styles/style-mobile-light.css");
 const CSS_STYLE_TABLET_DARK: &str = include_str!("../assets/styles/style-tablet-dark.css");
+const CSS_STYLE_TABLET_LIGHT: &str = include_str!("../assets/styles/style-tablet-light.css");
 
 fn get_css_style(template_type: Option<Template>) -> &'static str {
   match template_type {
     Some(Template::MobileDark) => CSS_STYLE_MOBILE_DARK,
     Some(Template::MobileLight) => CSS_STYLE_MOBILE_LIGHT,
     Some(Template::TabletDark) => CSS_STYLE_TABLET_DARK,
+    Some(Template::TabletLight) => CSS_STYLE_TABLET_LIGHT,
     None => CSS_STYLE_MOBILE_DARK
   }
 }

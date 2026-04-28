@@ -7,5 +7,7 @@ pub enum Template {
     /// A light template for mobile phones
     MobileLight,
     /// A dark template for tablets
-    TabletDark
+    TabletDark,
+    /// A light template for tablets
+    TabletLight
 }
