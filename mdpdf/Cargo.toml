@@ -4,3 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+comrak = "0.52.0"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0.102"
+lopdf = "0.40.0"
+headless_chrome = "1.0.21"
+clap = { version = "4", feature = ["derive"] }
+url = "2.5.8"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
