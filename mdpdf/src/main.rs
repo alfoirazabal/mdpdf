@@ -63,7 +63,6 @@ async fn main() -> Result<()> {
         Commands::Extract { input, output } => {
             match extract::extract_file(&input, &output) {
                 Ok(()) => {
-                    println!("OK");
                     std::process::exit(0);
                 },
                 Err(err) => {

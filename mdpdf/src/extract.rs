@@ -27,8 +27,6 @@ pub fn extract_file(
 
         let name = std::str::from_utf8(name_obj.as_str()?)?;
 
-        println!("{}", name);
-
         if name == embed::SOURCE_MD_FILE_NAME {
             let file_spec = doc.get_object(file_spec_ref)?.as_dict()?;
 
@@ -45,7 +43,7 @@ pub fn extract_file(
             let mut file = File::create(output_path)?;
             file.write_all(&data)?;
 
-            println!("Extracted {} → {}", name, output_path);
+            println!("Extracted source Markdown file → {}", output_path);
             return Ok(());
         }
     }
