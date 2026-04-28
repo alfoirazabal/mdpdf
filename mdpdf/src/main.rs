@@ -4,21 +4,13 @@ mod pdf;
 mod embed;
 mod cli;
 mod extract;
+mod enums;
 
 use anyhow::Result;
 use std::fs;
 use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
-
-fn get_template_type(template_type_string: Option<cli::Template>) -> templates::TemplateType {
-    return match template_type_string {
-        Some(cli::Template::MobileLight) => templates::TemplateType::MobileLight,
-        Some(cli::Template::MobileDark) => templates::TemplateType::MobileDark,
-        Some(cli::Template::TabletDark) => templates::TemplateType::TabletDark,
-        None => templates::TemplateType::MobileDark,
-    };
-}
 
 fn get_default_title(input: &str) -> String {
     let path = Path::new(&input);
@@ -38,7 +30,6 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Commands::Render { input, output, template } => {
-            let template_type = get_template_type(template);
             let title = get_default_title(&input);
 
             println!("Reading Markdown...");
@@ -48,7 +39,7 @@ async fn main() -> Result<()> {
             let html_body = markdown::to_html(&md)?;
 
             println!("Applying template...");
-            let full_html = templates::wrap_html(&html_body, &title, template_type);
+            let full_html = templates::wrap_html(&html_body, &title, template);
 
             let temp_html = "temp.html";
             fs::write(temp_html, full_html)?;

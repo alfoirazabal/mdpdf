@@ -1,4 +1,5 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
+use crate::enums::template_enum::Template;
 
 #[derive(Parser)]
 #[command(name = "mdpdf")]
@@ -6,16 +7,6 @@ use clap::{Parser, Subcommand, ValueEnum};
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-}
-
-#[derive(ValueEnum, Clone, Debug)]
-pub enum Template {
-    /// A dark template for mobile phones
-    MobileDark,
-    /// A light template for mobile phones
-    MobileLight,
-    /// A dark template for tablets
-    TabletDark
 }
 
 #[derive(Subcommand)]

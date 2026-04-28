@@ -1,3 +1,5 @@
+use crate::enums::template_enum::Template;
+
 const KATEX_CSS: &str = include_str!("../assets/katex.min.css");
 const KATEX_JS: &str = include_str!("../assets/katex.min.js");
 const AUTO_RENDER_JS: &str = include_str!("../assets/auto-render.min.js");
@@ -7,21 +9,16 @@ const CSS_STYLE_MOBILE_DARK: &str = include_str!("../assets/styles/style-mobile-
 const CSS_STYLE_MOBILE_LIGHT: &str = include_str!("../assets/styles/style-mobile-light.css");
 const CSS_STYLE_TABLET_DARK: &str = include_str!("../assets/styles/style-tablet-dark.css");
 
-pub enum TemplateType {
-  MobileDark,
-  MobileLight,
-  TabletDark,
-}
-
-fn get_css_style(template_type: TemplateType) -> &'static str {
+fn get_css_style(template_type: Option<Template>) -> &'static str {
   match template_type {
-    TemplateType::MobileDark => CSS_STYLE_MOBILE_DARK,
-    TemplateType::MobileLight => CSS_STYLE_MOBILE_LIGHT,
-    TemplateType::TabletDark => CSS_STYLE_TABLET_DARK
+    Some(Template::MobileDark) => CSS_STYLE_MOBILE_DARK,
+    Some(Template::MobileLight) => CSS_STYLE_MOBILE_LIGHT,
+    Some(Template::TabletDark) => CSS_STYLE_TABLET_DARK,
+    None => CSS_STYLE_MOBILE_DARK
   }
 }
 
-pub fn wrap_html(body: &str, title: &str, template_type: TemplateType) -> String {
+pub fn wrap_html(body: &str, title: &str, template_type: Option<Template>) -> String {
 
   let template = get_css_style(template_type);
 
