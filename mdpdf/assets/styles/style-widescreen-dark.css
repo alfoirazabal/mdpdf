@@ -1,0 +1,25 @@
+@page {
+  size: 15in 8.44in;
+  background: #121212;
+  margin: 48px;
+}
+
+body {
+  font-family: system-ui;
+  line-height: 2;
+  color: #eaeaea;
+  text-align: justify;
+}
+
+ol, ul {
+  padding-left: 18px;
+}
+
+pre {
+  background: #1e1e1e;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-wrap: break-word;
+  white-space: break-spaces;
+  text-align: start;
+}
