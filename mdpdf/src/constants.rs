@@ -9,5 +9,5 @@ pub fn about() -> String {
 }
 
 pub fn generate_pdf_metadata_creator_value() -> String {
-    format!("MDPDF V {}", VERSION)
+    format!("MDPDF V{}", VERSION)
 }

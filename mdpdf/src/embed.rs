@@ -1,5 +1,5 @@
 use anyhow::Result;
-use lopdf::{Document};
+use lopdf::{Document, Object};
 use std::fs;
 
 pub const SOURCE_MD_FILE_NAME: &str = "SOURCE_MD_FILE.md";
@@ -79,17 +79,30 @@ fn attach_to_catalog(
     Ok(())
 }
 
-pub fn attach_file(pdf_path: &str, file_path: &str) -> Result<()> {
-    let mut doc = Document::load(pdf_path)?;
-    let data = fs::read(file_path)?;
+pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str) -> Result<()> {
+    let mut doc = Document::load(output_path)?;
+    let data = fs::read(input_path)?;
 
     let ef_ref = create_embedded_file(&mut doc, data);
     let filespec_ref = create_filespec(&mut doc, ef_ref);
     let tree_ref = create_embedded_files_tree(&mut doc, SOURCE_MD_FILE_NAME, filespec_ref);
 
+    let info_id = doc.trailer.get(b"Info")
+        .and_then(|obj| obj.as_reference())
+        .unwrap_or_else(|_| {
+            let id = doc.new_object_id();
+            doc.trailer.set("Info", Object::Reference(id));
+            id
+        });
+    
+    let info_dict = doc.get_object_mut(info_id)?.as_dict_mut()?;
+
+    let new_creator_value = crate::constants::generate_pdf_metadata_creator_value();
+    info_dict.set("Creator", lopdf::Object::string_literal(new_creator_value));
+
     attach_to_catalog(&mut doc, tree_ref)?;
 
     doc.compress();
-    doc.save(pdf_path)?;
+    doc.save(output_path)?;
     Ok(())
 }
