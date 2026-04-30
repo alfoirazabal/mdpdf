@@ -3,7 +3,7 @@ use crate::enums::template_enum::Template;
 
 #[derive(Parser)]
 #[command(name = "mdpdf")]
-#[command(author = "Alfonso Irazabal Levy", version = "1.0", about = "MDPDF - Convert Markdown to PDF and vice versa - By Alfonso Irazabal Levy - V 1.0")]
+#[command(author = "Alfonso Irazabal Levy", version = "1.1.0", about = "MDPDF - Convert Markdown to PDF and vice versa - By Alfonso Irazabal Levy - V 1.1.0")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
