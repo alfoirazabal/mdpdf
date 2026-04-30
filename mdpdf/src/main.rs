@@ -5,6 +5,7 @@ mod embed;
 mod cli;
 mod extract;
 mod enums;
+mod status_messages;
 
 use anyhow::Result;
 use std::fs;
@@ -23,31 +24,36 @@ fn get_default_title(input: &str) -> String {
     return stem;
 }
 
+fn get_message_provider() -> Box<dyn status_messages::MessageFetcher> {
+    Box::new(status_messages::StatusMessageProvider)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
 
     let cli = Cli::parse();
+    let mut message_provider = get_message_provider();
 
     match cli.command {
         Commands::Render { input, output, template } => {
             let title = get_default_title(&input);
 
-            println!("Reading Markdown...");
+            println!("{}", message_provider.get_message(status_messages::StatusMessage::ReadingMarkdown));
             let md = fs::read_to_string(&input)?;
 
-            println!("Converting to HTML...");
+            println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingToHtml));
             let html_body = markdown::to_html(&md)?;
 
-            println!("Applying template...");
+            println!("{}", message_provider.get_message(status_messages::StatusMessage::ApplyingTemplate));
             let full_html = templates::wrap_html(&html_body, &title, template);
 
             let temp_html = "temp.html";
             fs::write(temp_html, full_html)?;
 
-            println!("Converting HTML to PDF...");
+            println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingHtmlToPdf));
             pdf::html_to_pdf(temp_html, &output).await?;
 
-            println!("Attaching MD to PDF...");
+            println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
             embed::attach_file(&output, &input)?;
 
             match fs::remove_file(&temp_html) {
