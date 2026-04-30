@@ -1,13 +1,39 @@
+:root {
+  --default-foreground: #121212;
+  --default-background: #eaeaea;
+  --default-code-background: #c4c4c4;
+}
+
 @page {
   size: 15in 7.29in;
-  background: #eaeaea;
+  background: var(--default-background);
   margin: 48px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-align: start;
+}
+
+td {
+  border: 1px solid;
+}
+th, table {
+  border: 2px solid;
+}
+td, th, table {
+  border-collapse: collapse;
+  border-color: var(--default-foreground);
+  font-size: small;
+  padding: 6px;
+}
+th {
+  text-align: center;
 }
 
 body {
   font-family: system-ui;
   line-height: 2;
-  color: #121212;
+  color: var(--default-foreground);
   text-align: justify;
 }
 
@@ -16,7 +42,7 @@ ol, ul {
 }
 
 pre {
-  background: #c4c4c4;
+  background: var(--default-code-background);
   padding: 12px;
   border-radius: 8px;
   overflow-wrap: break-word;
