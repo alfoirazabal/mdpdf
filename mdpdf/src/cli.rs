@@ -1,9 +1,10 @@
 use clap::{Parser, Subcommand};
 use crate::enums::template_enum::Template;
+use crate::constants;
 
 #[derive(Parser)]
 #[command(name = "mdpdf")]
-#[command(author = "Alfonso Irazabal Levy", version = "1.1.0", about = "MDPDF - Convert Markdown to PDF and vice versa - By Alfonso Irazabal Levy - V 1.1.0")]
+#[command(author = constants::DEV_NAME, version = constants::VERSION, about = constants::about())]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

@@ -6,6 +6,7 @@ mod cli;
 mod extract;
 mod enums;
 mod status_messages;
+mod constants;
 
 use anyhow::Result;
 use std::fs;
@@ -54,7 +55,7 @@ async fn main() -> Result<()> {
             pdf::html_to_pdf(temp_html, &output).await?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
-            embed::attach_file(&output, &input)?;
+            embed::attach_file_and_embed_metadata(&output, &input)?;
 
             match fs::remove_file(&temp_html) {
                 Ok(()) => { }
