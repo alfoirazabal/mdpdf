@@ -6,6 +6,7 @@ mod cli;
 mod extract;
 mod enums;
 mod status_messages;
+mod constants;
 
 use anyhow::Result;
 use std::fs;
