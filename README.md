@@ -62,7 +62,7 @@ mv mdpdf /usr/local/bin/
 ### Build from source
 
 ```sh
-git clone https://github.com/your-username/mdpdf.git
+git clone https://github.com/alfoirazabal/mdpdf.git
 cd mdpdf
 cargo build --release
 ```
@@ -238,7 +238,7 @@ The `extract` command reverses step 5: it reads the PDF's embedded file tree, lo
 Requires Rust 1.85 or later (edition 2024).
 
 ```sh
-git clone https://github.com/your-username/mdpdf.git
+git clone https://github.com/alfoirazabal/mdpdf.git
 cd mdpdf
 cargo build --release
 ```
