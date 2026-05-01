@@ -81,12 +81,14 @@ fn attach_to_catalog(
 
 fn make_pdf_utf16_string(s: &str) -> Object {
     // UTF-16BE + BOM
-    let mut bytes = vec![0xFE, 0xFF]; // BOM
+    let mut units: Vec<u16> = Vec::with_capacity(s.len() + 1);
+    units.push(0xFEFF); // BOM
+    units.extend(s.encode_utf16());
 
-    for unit in s.encode_utf16() {
-        bytes.push((unit >> 8) as u8);
-        bytes.push((unit & 0xFF) as u8);
-    }
+    let bytes: Vec<u8> = units
+        .iter()
+        .flat_map(|u| u.to_be_bytes())
+        .collect();
 
     Object::String(bytes, lopdf::StringFormat::Literal)
 }
