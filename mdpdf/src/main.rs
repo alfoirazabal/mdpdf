@@ -7,12 +7,17 @@ mod extract;
 mod enums;
 mod status_messages;
 mod constants;
+mod helpers;
 
 use anyhow::Result;
 use std::fs;
 use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
+
+fn perform_validations(custom_metadata: &[String]) {
+    helpers::args_validator::validate_custom_metadata(custom_metadata);
+}
 
 fn get_default_title(input: &str) -> String {
     let path = Path::new(&input);
@@ -51,6 +56,8 @@ async fn main() -> Result<()> {
             generate_html ,
             custom_metadata
         } => {
+            perform_validations(&custom_metadata);
+
             let title = get_default_title(&input);
             
             let output_filename = fix_output_filename(&output);
