@@ -28,6 +28,15 @@ pub enum Commands {
         /// Use a custom CSS template file instead of the built-in ones
         #[arg(short, long)]
         custom_template_path: Option<String>,
+
+        /// Generate an HTML file (Markdown -> HTML -> PDF). Useful for tweaking rendered PDF style.
+        #[arg(long = "ghtml", default_value_t = false)]
+        generate_html: bool,
+
+        /// Add a custom metadata tag to the PDF (Title, Author, Subject, Keywords).
+        /// Separate key from value with `=`.
+        #[arg(long = "cm", action = clap::ArgAction::Append, num_args(1..))]
+        custom_metadata: Vec<String>,
     },
 
     /// Extract embedded Markdown from PDF

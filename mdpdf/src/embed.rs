@@ -79,7 +79,7 @@ fn attach_to_catalog(
     Ok(())
 }
 
-pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str) -> Result<()> {
+pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str, custom_metadata: &[String]) -> Result<()> {
     let mut doc = Document::load(output_path)?;
     let data = fs::read(input_path)?;
 
@@ -99,6 +99,14 @@ pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str) -> Re
 
     let new_creator_value = crate::constants::generate_pdf_metadata_creator_value();
     info_dict.set("Creator", lopdf::Object::string_literal(new_creator_value));
+
+    for key in custom_metadata {
+        let (k, v) = key.split_once('=').unwrap_or_else(|| {
+            eprintln!("Invalid custom metadata format: `{}`. Expected `key=value`.", key);
+            std::process::exit(1);
+        });
+        info_dict.set(k, lopdf::Object::string_literal(v));
+    }
 
     attach_to_catalog(&mut doc, tree_ref)?;
 
