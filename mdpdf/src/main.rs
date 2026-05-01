@@ -48,7 +48,8 @@ async fn main() -> Result<()> {
             input, output,
             template, 
             custom_template_path,
-            generate_html 
+            generate_html ,
+            custom_metadata
         } => {
             let title = get_default_title(&input);
             
@@ -70,7 +71,7 @@ async fn main() -> Result<()> {
             pdf::html_to_pdf(&temp_html, &output_filename).await?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
-            embed::attach_file_and_embed_metadata(&output_filename, &input)?;
+            embed::attach_file_and_embed_metadata(&output_filename, &input, &custom_metadata)?;
 
             if !generate_html {
                 match fs::remove_file(&temp_html) {
