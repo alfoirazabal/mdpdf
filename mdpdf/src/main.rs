@@ -15,8 +15,9 @@ use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
 
-fn perform_validations(custom_metadata: &[String]) {
+fn perform_validations(custom_metadata: &[String], scale: f64) {
     helpers::args_validator::validate_custom_metadata(custom_metadata);
+    helpers::args_validator::validate_scale(scale);
 }
 
 fn get_default_title(input: &str) -> String {
@@ -54,9 +55,10 @@ async fn main() -> Result<()> {
             template, 
             custom_template_path,
             generate_html ,
-            custom_metadata
+            custom_metadata,
+            scale
         } => {
-            perform_validations(&custom_metadata);
+            perform_validations(&custom_metadata, scale);
 
             let title = get_default_title(&input);
             
@@ -75,7 +77,7 @@ async fn main() -> Result<()> {
             fs::write(&temp_html, full_html)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingHtmlToPdf));
-            pdf::html_to_pdf(&temp_html, &output_filename).await?;
+            pdf::html_to_pdf(&temp_html, &output_filename, &scale).await?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
             embed::attach_file_and_embed_metadata(&output_filename, &input, &custom_metadata)?;

@@ -79,6 +79,18 @@ fn attach_to_catalog(
     Ok(())
 }
 
+fn make_pdf_utf16_string(s: &str) -> Object {
+    // UTF-16BE + BOM
+    let mut bytes = vec![0xFE, 0xFF]; // BOM
+
+    for unit in s.encode_utf16() {
+        bytes.push((unit >> 8) as u8);
+        bytes.push((unit & 0xFF) as u8);
+    }
+
+    Object::String(bytes, lopdf::StringFormat::Literal)
+}
+
 pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str, custom_metadata: &[String]) -> Result<()> {
     let mut doc = Document::load(output_path)?;
     let data = fs::read(input_path)?;
@@ -105,7 +117,7 @@ pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str, custo
             eprintln!("Invalid custom metadata format: `{}`. Expected `key=value`.", key);
             std::process::exit(1);
         });
-        info_dict.set(k, lopdf::Object::string_literal(v));
+        info_dict.set(k, make_pdf_utf16_string(v));
     }
 
     attach_to_catalog(&mut doc, tree_ref)?;

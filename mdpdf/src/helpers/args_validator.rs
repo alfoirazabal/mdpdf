@@ -6,3 +6,10 @@ pub fn validate_custom_metadata(metadata: &[String]) {
         }
     }
 }
+
+pub fn validate_scale(scale: f64) {
+    if scale < 0.1 || scale > 2.0 {
+        eprintln!("Invalid scale value: {}. The scale must be within the range [0.1 – 2].", scale);
+        std::process::exit(1);
+    }
+}
