@@ -15,8 +15,9 @@ use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
 
-fn perform_validations(custom_metadata: &[String]) {
+fn perform_validations(custom_metadata: &[String], scale: f64) {
     helpers::args_validator::validate_custom_metadata(custom_metadata);
+    helpers::args_validator::validate_scale(scale);
 }
 
 fn get_default_title(input: &str) -> String {
@@ -57,7 +58,7 @@ async fn main() -> Result<()> {
             custom_metadata,
             scale
         } => {
-            perform_validations(&custom_metadata);
+            perform_validations(&custom_metadata, scale);
 
             let title = get_default_title(&input);
             
