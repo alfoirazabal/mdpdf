@@ -2,7 +2,7 @@ use anyhow::Result;
 use headless_chrome::{Browser, LaunchOptions};
 use url::Url;
 
-pub async fn html_to_pdf(input: &str, output: &str) -> Result<()> {
+pub async fn html_to_pdf(input: &str, output: &str, scale: &f64) -> Result<()> {
 
     let path = std::fs::canonicalize(input)?;
     let url = Url::from_file_path(&path)
@@ -23,6 +23,7 @@ pub async fn html_to_pdf(input: &str, output: &str) -> Result<()> {
         prefer_css_page_size: Some(true),
         display_header_footer: Some(false),
         print_background: Some(true),
+        scale: Some(*scale),
         ..Default::default()
     };
 

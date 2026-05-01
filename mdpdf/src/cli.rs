@@ -29,6 +29,10 @@ pub enum Commands {
         #[arg(short, long)]
         custom_template_path: Option<String>,
 
+        /// Set the scale factor for the PDF
+        #[arg(short, long, default_value_t = 1.0)]
+        scale: f64,
+
         /// Generate an HTML file (Markdown -> HTML -> PDF). Useful for tweaking rendered PDF style.
         #[arg(long = "ghtml", default_value_t = false)]
         generate_html: bool,
