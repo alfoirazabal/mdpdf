@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     let mut message_provider = get_message_provider();
 
     match cli.command {
-        Commands::Render { input, output, template } => {
+        Commands::Render { input, output, template, custom_template_path } => {
             let title = get_default_title(&input);
             
             let output_filename = fix_output_filename(&output);
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
             let html_body = markdown::to_html(&md)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ApplyingTemplate));
-            let full_html = templates::wrap_html(&html_body, &title, template);
+            let full_html = templates::wrap_html(&html_body, &title, template, custom_template_path);
 
             let temp_html = "temp.html";
             fs::write(temp_html, full_html)?;

@@ -24,6 +24,10 @@ pub enum Commands {
         /// Template name
         #[arg(short, long)]
         template: Option<Template>,
+
+        /// Use a custom CSS template file instead of the built-in ones
+        #[arg(short, long)]
+        custom_template_path: Option<String>,
     },
 
     /// Extract embedded Markdown from PDF

@@ -17,6 +17,12 @@ const CSS_STYLE_PRINT_A4_DARK: &str = include_str!("../assets/styles/style-print
 const CSS_STYLE_PRINT_A4_LIGHT: &str = include_str!("../assets/styles/style-print-a4-light.css");
 const CSS_STYLE_PRINT_A4: &str = include_str!("../assets/styles/style-print-a4.css");
 
+fn read_template_from_file(path: &str) -> String {
+  std::fs::read_to_string(path).unwrap_or_else(|_| {
+    panic!("Failed to read template file at path: {}", path);
+  })
+}
+
 fn get_css_style(template_type: Option<Template>) -> &'static str {
   match template_type {
     Some(Template::MobileDark) => CSS_STYLE_MOBILE_DARK,
@@ -34,9 +40,12 @@ fn get_css_style(template_type: Option<Template>) -> &'static str {
   }
 }
 
-pub fn wrap_html(body: &str, title: &str, template_type: Option<Template>) -> String {
+pub fn wrap_html(body: &str, title: &str, template_type: Option<Template>, template_path: Option<String>) -> String {
 
-  let template = get_css_style(template_type);
+  let template = match template_path {
+    Some(path) => read_template_from_file(&path),
+    None => get_css_style(template_type).to_string()
+  };
 
   format!(
 r#"<!DOCTYPE html>
