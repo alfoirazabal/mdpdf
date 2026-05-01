@@ -25,6 +25,14 @@ fn get_default_title(input: &str) -> String {
     return stem;
 }
 
+fn fix_output_filename(output: &str) -> String {
+    if output.to_lowercase().ends_with(".pdf") {
+        output.to_string()
+    } else {
+        format!("{}.pdf", output)
+    }
+}
+
 fn get_message_provider() -> Box<dyn status_messages::MessageFetcher> {
     Box::new(status_messages::StatusMessageProvider)
 }
@@ -38,6 +46,8 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Render { input, output, template } => {
             let title = get_default_title(&input);
+            
+            let output_filename = fix_output_filename(&output);
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ReadingMarkdown));
             let md = fs::read_to_string(&input)?;
@@ -52,10 +62,10 @@ async fn main() -> Result<()> {
             fs::write(temp_html, full_html)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingHtmlToPdf));
-            pdf::html_to_pdf(temp_html, &output).await?;
+            pdf::html_to_pdf(temp_html, &output_filename).await?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
-            embed::attach_file_and_embed_metadata(&output, &input)?;
+            embed::attach_file_and_embed_metadata(&output_filename, &input)?;
 
             match fs::remove_file(&temp_html) {
                 Ok(()) => { }
