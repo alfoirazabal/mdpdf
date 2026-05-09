@@ -1,6 +1,6 @@
 [package]
 name = "mdpdf"
-version = "1.6.0"
+version = "1.7.0"
 edition = "2024"
 
 [dependencies]
@@ -11,6 +11,7 @@ lopdf = "0.40.0"
 headless_chrome = "1.0.21"
 clap = { version = "4", feature = ["derive"] }
 url = "2.5.8"
+serde_json = "1"
 
 [profile.release]
 opt-level = "z"

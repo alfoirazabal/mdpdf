@@ -36,6 +36,7 @@ MDPDF is a fast, self-contained CLI tool written in Rust that converts Markdown 
 - Bidirectional workflow: recover the source Markdown from any MDPDF-generated PDF
 - Custom PDF metadata (Title, Author, Subject, Keywords, or any key)
 - Adjustable PDF scale factor
+- Single-page output mode: measures rendered content and sets the PDF page to fit it exactly — no clipping, no scrolling void
 - Optional intermediate HTML output for debugging your styles
 - Zero-margin PDF output with full background color support
 
@@ -132,6 +133,20 @@ By default, comrak strips any HTML tags embedded in your Markdown — `<div>`, `
 
 > **Note:** Because of how comrak works internally, this flag also permits unsafe link schemes such as `javascript:` and `data:` — the two cannot be separated at the library level. Only use `--allow-html` with Markdown source you control and trust.
 
+**Fit the entire document to a single PDF page:**
+
+```sh
+mdpdf render document.md --output document.pdf --one-page
+```
+
+MDPDF renders the document in Chrome, measures the actual content dimensions, and sets the PDF page size to match exactly — width and height hug the content with no clipping and no empty space below. Wide tables expand the page width rather than getting cut off. The template width is always respected; `--one-page` only adjusts the height to fit.
+
+`--one-page` and `--scale` work together: scale is applied first, then the page dimensions are measured from the scaled output.
+
+```sh
+mdpdf render document.md --output document.pdf --one-page --scale 0.8
+```
+
 ---
 
 ### `extract` — Recover Markdown from PDF
@@ -219,6 +234,7 @@ MDPDF also automatically sets the `Creator` metadata field to `MDPDF v<version>`
 | `--scale <SCALE>`           | `-s`  | PDF scale factor. Must be between `0.1` and `2.0`                          | `1.0`        |
 | `--ghtml`                   |       | Keep the intermediate HTML file alongside the PDF output                    | `false`      |
 | `--allow-html`              |       | Pass raw HTML elements in the Markdown source through to the output. Also permits unsafe link schemes (`javascript:`, `data:`). Use only with trusted input. | `false` |
+| `--one-page`                |       | Fit the entire document into a single PDF page by measuring rendered content dimensions. Compatible with `--scale`. | `false` |
 | `--cm <KEY=VALUE>`          |       | Add a custom metadata field. Repeatable                                     |              |
 
 ### `extract`
@@ -237,7 +253,7 @@ MDPDF processes a document through a well-defined pipeline:
 1. **Read** — The input `.md` file is read from disk.
 2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is.
 3. **Template** — The HTML body is wrapped in a full HTML document that includes the selected CSS template and the KaTeX math rendering library (CSS and JS are bundled into the binary at compile time, so no network access is needed).
-4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline.
+4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the rendered content dimensions (`scrollWidth` × `scrollHeight`) are measured via JavaScript before printing and passed as the paper size, so the PDF page hugs the content exactly.
 5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). Custom metadata fields are written to the PDF's Info dictionary.
 6. **Clean up** — The temporary HTML file is deleted (unless `--ghtml` was passed).
 
@@ -276,6 +292,7 @@ cargo test
 | `tokio`            | Async runtime for the Chrome rendering step          |
 | `anyhow`           | Ergonomic error handling                             |
 | `url`              | File path to `file://` URL conversion                |
+| `serde_json`       | Parsing JS-evaluated content dimensions in one-page mode |
 
 KaTeX (CSS and JS) is bundled directly into the binary at compile time via `include_str!`.
 
