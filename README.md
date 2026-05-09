@@ -31,6 +31,7 @@ MDPDF is a fast, self-contained CLI tool written in Rust that converts Markdown 
 - Custom CSS template support for full visual control
 - KaTeX math rendering built in — no external CDN required
 - Markdown extensions: tables, footnotes, and strikethrough
+- Optional raw HTML passthrough — keep `<div>`, `<span>`, custom tags, and inline styles intact in the output
 - Embedded source: the original `.md` file is embedded inside the output PDF
 - Bidirectional workflow: recover the source Markdown from any MDPDF-generated PDF
 - Custom PDF metadata (Title, Author, Subject, Keywords, or any key)
@@ -121,6 +122,16 @@ mdpdf render document.md --output document.pdf --ghtml
 
 This produces both `document.pdf` and `document.pdf.html` so you can inspect exactly what Chrome is rendering.
 
+**Allow raw HTML elements in your Markdown source:**
+
+```sh
+mdpdf render document.md --output document.pdf --allow-html
+```
+
+By default, comrak strips any HTML tags embedded in your Markdown — `<div>`, `<span>`, inline `style` attributes, custom elements, and so on. Passing `--allow-html` lets them through to the rendered output unchanged.
+
+> **Note:** Because of how comrak works internally, this flag also permits unsafe link schemes such as `javascript:` and `data:` — the two cannot be separated at the library level. Only use `--allow-html` with Markdown source you control and trust.
+
 ---
 
 ### `extract` — Recover Markdown from PDF
@@ -207,6 +218,7 @@ MDPDF also automatically sets the `Creator` metadata field to `MDPDF v<version>`
 | `--custom-template-path`    | `-c`  | Path to a custom CSS file. Overrides `--template` when set                  |              |
 | `--scale <SCALE>`           | `-s`  | PDF scale factor. Must be between `0.1` and `2.0`                          | `1.0`        |
 | `--ghtml`                   |       | Keep the intermediate HTML file alongside the PDF output                    | `false`      |
+| `--allow-html`              |       | Pass raw HTML elements in the Markdown source through to the output. Also permits unsafe link schemes (`javascript:`, `data:`). Use only with trusted input. | `false` |
 | `--cm <KEY=VALUE>`          |       | Add a custom metadata field. Repeatable                                     |              |
 
 ### `extract`
@@ -223,7 +235,7 @@ MDPDF also automatically sets the `Creator` metadata field to `MDPDF v<version>`
 MDPDF processes a document through a well-defined pipeline:
 
 1. **Read** — The input `.md` file is read from disk.
-2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled.
+2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is.
 3. **Template** — The HTML body is wrapped in a full HTML document that includes the selected CSS template and the KaTeX math rendering library (CSS and JS are bundled into the binary at compile time, so no network access is needed).
 4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline.
 5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). Custom metadata fields are written to the PDF's Info dictionary.
