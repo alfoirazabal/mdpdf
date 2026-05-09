@@ -139,9 +139,9 @@ By default, comrak strips any HTML tags embedded in your Markdown — `<div>`, `
 mdpdf render document.md --output document.pdf --one-page
 ```
 
-MDPDF renders the document in Chrome, measures the actual content dimensions, and sets the PDF page size to match exactly — width and height hug the content with no clipping and no empty space below. Wide tables expand the page width rather than getting cut off. The template width is always respected; `--one-page` only adjusts the height to fit.
+MDPDF reads the `@page` margin from the active template, measures the rendered content dimensions, and sets the PDF page to exactly fit the content plus its margins — no clipping, no empty space, no multiple pages. Wide tables push the page width out rather than getting cut off. The template's original margin and visual style are preserved unchanged.
 
-`--one-page` and `--scale` work together: scale is applied first, then the page dimensions are measured from the scaled output.
+`--one-page` and `--scale` are fully compatible: scale is applied first by Chrome, then dimensions are measured from the scaled result.
 
 ```sh
 mdpdf render document.md --output document.pdf --one-page --scale 0.8
@@ -253,7 +253,7 @@ MDPDF processes a document through a well-defined pipeline:
 1. **Read** — The input `.md` file is read from disk.
 2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is.
 3. **Template** — The HTML body is wrapped in a full HTML document that includes the selected CSS template and the KaTeX math rendering library (CSS and JS are bundled into the binary at compile time, so no network access is needed).
-4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the rendered content dimensions (`scrollWidth` × `scrollHeight`) are measured via JavaScript before printing and passed as the paper size, so the PDF page hugs the content exactly.
+4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the pipeline first reads the `@page` margin values from the loaded template stylesheet via JavaScript, then measures the rendered content's `scrollWidth` and `scrollHeight`, adds the margins to both dimensions, injects a `@page` size override to suppress page fragmentation, and passes the result as `paper_width`/`paper_height` to Chrome — producing a single page that fits the content exactly with the template's original spacing intact.
 5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). Custom metadata fields are written to the PDF's Info dictionary.
 6. **Clean up** — The temporary HTML file is deleted (unless `--ghtml` was passed).
 
