@@ -56,6 +56,7 @@ async fn main() -> Result<()> {
             custom_template_path,
             generate_html ,
             custom_metadata,
+            allow_html,
             scale
         } => {
             perform_validations(&custom_metadata, scale);
@@ -68,7 +69,7 @@ async fn main() -> Result<()> {
             let md = fs::read_to_string(&input)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingToHtml));
-            let html_body = markdown::to_html(&md)?;
+            let html_body = markdown::to_html(&md, allow_html)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ApplyingTemplate));
             let full_html = templates::wrap_html(&html_body, &title, template, custom_template_path);

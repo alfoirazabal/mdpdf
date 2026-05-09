@@ -37,6 +37,12 @@ pub enum Commands {
         #[arg(long = "ghtml", default_value_t = false)]
         generate_html: bool,
 
+        /// Allow raw HTML elements embedded in the Markdown source to pass through to the output.
+        /// Note: this also permits unsafe link schemes such as javascript: and data:,
+        /// as comrak controls both with a single flag. Only use this with Markdown you trust.
+        #[arg(long = "allow-html", default_value_t = false)]
+        allow_html: bool,
+
         /// Add a custom metadata tag to the PDF (Title, Author, Subject, Keywords).
         /// Separate key from value with `=`.
         #[arg(long = "cm", action = clap::ArgAction::Append, num_args(1..))]
