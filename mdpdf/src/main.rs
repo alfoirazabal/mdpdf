@@ -57,6 +57,7 @@ async fn main() -> Result<()> {
             generate_html ,
             custom_metadata,
             allow_html,
+            one_page,
             scale
         } => {
             perform_validations(&custom_metadata, scale);
@@ -78,7 +79,7 @@ async fn main() -> Result<()> {
             fs::write(&temp_html, full_html)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingHtmlToPdf));
-            pdf::html_to_pdf(&temp_html, &output_filename, &scale).await?;
+            pdf::html_to_pdf(&temp_html, &output_filename, &scale, one_page).await?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
             embed::attach_file_and_embed_metadata(&output_filename, &input, &custom_metadata)?;

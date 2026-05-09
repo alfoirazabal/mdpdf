@@ -43,6 +43,13 @@ pub enum Commands {
         #[arg(long = "allow-html", default_value_t = false)]
         allow_html: bool,
 
+        /// Fit the entire document into a single PDF page. The page dimensions are
+        /// measured from the rendered content, so nothing is clipped or scaled down.
+        /// The template width is respected; only the height is adjusted to fit the content.
+        /// Compatible with --scale: scale is applied first, then dimensions are measured.
+        #[arg(long = "one-page", default_value_t = false)]
+        one_page: bool,
+
         /// Add a custom metadata tag to the PDF (Title, Author, Subject, Keywords).
         /// Separate key from value with `=`.
         #[arg(long = "cm", action = clap::ArgAction::Append, num_args(1..))]
