@@ -47,8 +47,17 @@ pub enum Commands {
         /// measured from the rendered content, so nothing is clipped or scaled down.
         /// The template width is respected; only the height is adjusted to fit the content.
         /// Compatible with --scale: scale is applied first, then dimensions are measured.
+        /// Mutually exclusive with --manual-breaks.
         #[arg(long = "one-page", default_value_t = false)]
         one_page: bool,
+
+        /// Only break the page on explicit CSS break indicators in the content
+        /// (e.g. <div style="break-after: page"></div>). Automatic page breaks
+        /// inserted by Chrome based on the template page size are suppressed.
+        /// The template @page size and margins are preserved unchanged.
+        /// Mutually exclusive with --one-page.
+        #[arg(long = "manual-breaks", default_value_t = false)]
+        manual_breaks: bool,
 
         /// Add a custom metadata tag to the PDF (Title, Author, Subject, Keywords).
         /// Separate key from value with `=`.

@@ -6,7 +6,7 @@ use url::Url;
 // dimensions in inches, so we divide pixel measurements by 96.
 const CHROME_DPI: f64 = 96.0;
 
-pub async fn html_to_pdf(input: &str, output: &str, scale: &f64, one_page: bool) -> Result<()> {
+pub async fn html_to_pdf(input: &str, output: &str, scale: &f64, one_page: bool, manual_breaks: bool) -> Result<()> {
 
     let path = std::fs::canonicalize(input)?;
     let url = Url::from_file_path(&path)
@@ -133,6 +133,39 @@ pub async fn html_to_pdf(input: &str, output: &str, scale: &f64, one_page: bool)
     } else {
         (None, None, 0.0, 0.0, 0.0, 0.0)
     };
+
+    // When --manual-breaks is set, suppress all automatic page breaks that
+    // Chrome would insert based on the template's @page size. Only explicit
+    // CSS break indicators authored in the content (e.g. break-after: page)
+    // will produce page breaks. The template @page size and margins are
+    // left completely untouched.
+    //
+    // The selector targets every element that does NOT carry an explicit inline
+    // break-after or break-before rule, and forces those properties to 'avoid'.
+    // Elements that DO carry an explicit break-* inline style are unaffected
+    // because inline styles have higher specificity than this injected rule.
+    if manual_breaks {
+        tab.evaluate(r#"
+            (function() {
+                var s = document.createElement('style');
+                s.textContent = `
+                    * {
+                        break-inside: avoid !important;
+                        page-break-inside: avoid !important;
+                    }
+                    *:not([style*="break-after"]):not([style*="page-break-after"]) {
+                        break-after: avoid !important;
+                        page-break-after: avoid !important;
+                    }
+                    *:not([style*="break-before"]):not([style*="page-break-before"]) {
+                        break-before: avoid !important;
+                        page-break-before: avoid !important;
+                    }
+                `;
+                document.head.appendChild(s);
+            })();
+        "#, false)?;
+    }
 
     let options = headless_chrome::types::PrintToPdfOptions {
         margin_top:    Some(if one_page { margin_top_in }    else { 0.0 }),
