@@ -134,35 +134,118 @@ pub async fn html_to_pdf(input: &str, output: &str, scale: &f64, one_page: bool,
         (None, None, 0.0, 0.0, 0.0, 0.0)
     };
 
-    // When --manual-breaks is set, suppress all automatic page breaks that
-    // Chrome would insert based on the template's @page size. Only explicit
-    // CSS break indicators authored in the content (e.g. break-after: page)
-    // will produce page breaks. The template @page size and margins are
-    // left completely untouched.
+    // When --manual-breaks is set:
     //
-    // The selector targets every element that does NOT carry an explicit inline
-    // break-after or break-before rule, and forces those properties to 'avoid'.
-    // Elements that DO carry an explicit break-* inline style are unaffected
-    // because inline styles have higher specificity than this injected rule.
+    // We want each section between break divs to produce a PDF page sized to
+    // fit that section's content exactly. The approach:
+    //
+    // 1. Read @page margin and width from the template stylesheet.
+    // 2. Find all <div style="break-after: page"> elements (section boundaries).
+    // 3. Wrap the content between each pair of boundaries into a <div> and
+    //    remove the original break divs.
+    // 4. Measure each section's scrollHeight.
+    // 5. Inject a named @page rule per section (mdpdf-page-0, mdpdf-page-1, ...)
+    //    with width = template width and height = measured content + margins + buffer.
+    // 6. Assign each section div page: mdpdf-page-N and break-after: page.
+    //
+    // prefer_css_page_size: true lets Chrome use the named @page sizes.
+    // No paper_width/paper_height is passed — Chrome reads them from CSS.
     if manual_breaks {
         tab.evaluate(r#"
             (function() {
-                var s = document.createElement('style');
-                s.textContent = `
-                    * {
-                        break-inside: avoid !important;
-                        page-break-inside: avoid !important;
+                // --- Step 1: read @page margin and width from template stylesheet ---
+                var pageMarginTop = 0, pageMarginBottom = 0;
+                var pageMarginLeft = 0, pageMarginRight = 0;
+                var pageWidth = 'auto';
+                var PX = 96.0;
+                function toPx(val) {
+                    if (!val || val === '') return 0;
+                    val = val.trim();
+                    if (val.endsWith('px')) return parseFloat(val);
+                    if (val.endsWith('cm')) return parseFloat(val) / 2.54 * PX;
+                    if (val.endsWith('mm')) return parseFloat(val) / 25.4 * PX;
+                    if (val.endsWith('in')) return parseFloat(val) * PX;
+                    if (val.endsWith('pt')) return parseFloat(val) * PX / 72.0;
+                    return 0;
+                }
+                for (var i = 0; i < document.styleSheets.length; i++) {
+                    var rules;
+                    try { rules = document.styleSheets[i].cssRules; } catch(e) { continue; }
+                    for (var j = 0; j < rules.length; j++) {
+                        var r = rules[j];
+                        if (r.type === CSSRule.PAGE_RULE) {
+                            var s = r.style;
+                            pageMarginTop    = toPx(s.getPropertyValue('margin-top')    || s.getPropertyValue('margin') || '0');
+                            pageMarginBottom = toPx(s.getPropertyValue('margin-bottom') || s.getPropertyValue('margin') || '0');
+                            pageMarginLeft   = toPx(s.getPropertyValue('margin-left')   || s.getPropertyValue('margin') || '0');
+                            pageMarginRight  = toPx(s.getPropertyValue('margin-right')  || s.getPropertyValue('margin') || '0');
+                            var sz = s.getPropertyValue('size');
+                            if (sz) pageWidth = sz.trim().split(/\s+/)[0];
+                            break;
+                        }
                     }
-                    *:not([style*="break-after"]):not([style*="page-break-after"]) {
-                        break-after: avoid !important;
-                        page-break-after: avoid !important;
+                    if (pageWidth !== 'auto') break;
+                }
+
+                // --- Step 2: collect body children and locate break divs ---
+                var body = document.body;
+                var children = Array.from(body.childNodes);
+
+                // Identify break div indices
+                function isBreakDiv(node) {
+                    return node.nodeType === 1 &&
+                           node.tagName === 'DIV' &&
+                           (node.style.breakAfter === 'page' ||
+                            node.style.pageBreakAfter === 'always' ||
+                            (node.getAttribute('style') || '').indexOf('break-after') !== -1);
+                }
+
+                // Split children into sections at each break div
+                var sections = [];
+                var current = [];
+                for (var k = 0; k < children.length; k++) {
+                    if (isBreakDiv(children[k])) {
+                        sections.push(current);
+                        current = [];
+                    } else {
+                        current.push(children[k]);
                     }
-                    *:not([style*="break-before"]):not([style*="page-break-before"]) {
-                        break-before: avoid !important;
-                        page-break-before: avoid !important;
+                }
+                sections.push(current); // last section (no trailing break div needed)
+
+                // --- Step 3: wrap each section in a div and replace body contents ---
+                body.innerHTML = '';
+                var wrappers = [];
+                for (var s = 0; s < sections.length; s++) {
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'mdpdf-section';
+                    for (var n = 0; n < sections[s].length; n++) {
+                        wrapper.appendChild(sections[s][n]);
                     }
-                `;
-                document.head.appendChild(s);
+                    body.appendChild(wrapper);
+                    wrappers.push(wrapper);
+                }
+
+                // --- Step 4 & 5: measure each section and build named @page rules ---
+                var cssRules = '';
+                for (var w = 0; w < wrappers.length; w++) {
+                    var h = wrappers[w].scrollHeight + pageMarginTop + pageMarginBottom + 48;
+                    var pageName = 'mdpdf-page-' + w;
+                    cssRules += '@page ' + pageName + ' { size: ' + pageWidth + ' ' + h + 'px; ' +
+                        'margin-top: ' + pageMarginTop + 'px; ' +
+                        'margin-bottom: ' + pageMarginBottom + 'px; ' +
+                        'margin-left: ' + pageMarginLeft + 'px; ' +
+                        'margin-right: ' + pageMarginRight + 'px; }\n';
+                    wrappers[w].style.page = pageName;
+                }
+
+                // --- Step 6: inject styles ---
+                var styleEl = document.createElement('style');
+                styleEl.textContent = cssRules +
+                    'body { margin: 0 !important; padding: 0 !important; }\n' +
+                    '.mdpdf-section { break-after: page; page-break-after: always; }\n' +
+                    '.mdpdf-section:last-child { break-after: avoid; page-break-after: avoid; }\n';
+                document.head.appendChild(styleEl);
             })();
         "#, false)?;
     }

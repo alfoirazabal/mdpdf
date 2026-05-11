@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
             let md = fs::read_to_string(&input)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingToHtml));
-            let html_body = markdown::to_html(&md, allow_html)?;
+            let html_body = markdown::to_html(&md, allow_html || manual_breaks)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ApplyingTemplate));
             let full_html = templates::wrap_html(&html_body, &title, template, custom_template_path);
