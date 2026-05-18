@@ -37,6 +37,7 @@ MDPDF is a fast, self-contained CLI tool written in Rust that converts Markdown 
 - Custom PDF metadata (Title, Author, Subject, Keywords, or any key)
 - Adjustable PDF scale factor
 - Single-page output mode: measures rendered content and sets the PDF page to fit it exactly — no clipping, no scrolling void
+- Manual page break mode: suppress all automatic Chrome page breaks and break only on explicit CSS indicators in the content
 - Optional intermediate HTML output for debugging your styles
 - Zero-margin PDF output with full background color support
 
@@ -147,6 +148,22 @@ MDPDF reads the `@page` margin from the active template, measures the rendered c
 mdpdf render document.md --output document.pdf --one-page --scale 0.8
 ```
 
+**Control page breaks manually:**
+
+```sh
+mdpdf render document.md --output document.pdf --manual-breaks
+```
+
+By default, Chrome breaks pages automatically based on the template's `@page` size. With `--manual-breaks`, all automatic page breaks are suppressed. Pages break only where the Markdown source contains an explicit CSS break indicator, for example:
+
+```html
+<div style="break-after: page"></div>
+```
+
+The template `@page` size, margins, and all other visual styling are preserved exactly as normal. `--allow-html` is not required for this to work — the break indicator is just an inline style on an HTML element that can be embedded directly in the Markdown source.
+
+`--manual-breaks` and `--one-page` are mutually exclusive. Passing both together exits with an error.
+
 ---
 
 ### `extract` — Recover Markdown from PDF
@@ -234,7 +251,8 @@ MDPDF also automatically sets the `Creator` metadata field to `MDPDF v<version>`
 | `--scale <SCALE>`           | `-s`  | PDF scale factor. Must be between `0.1` and `2.0`                          | `1.0`        |
 | `--ghtml`                   |       | Keep the intermediate HTML file alongside the PDF output                    | `false`      |
 | `--allow-html`              |       | Pass raw HTML elements in the Markdown source through to the output. Also permits unsafe link schemes (`javascript:`, `data:`). Use only with trusted input. | `false` |
-| `--one-page`                |       | Fit the entire document into a single PDF page by measuring rendered content dimensions. Compatible with `--scale`. | `false` |
+| `--one-page`                |       | Fit the entire document into a single PDF page by measuring rendered content dimensions. Compatible with `--scale`. Mutually exclusive with `--manual-breaks`. | `false` |
+| `--manual-breaks`           |       | Suppress automatic page breaks. Break only on explicit CSS indicators in the content (e.g. `break-after: page`). Mutually exclusive with `--one-page`. | `false` |
 | `--cm <KEY=VALUE>`          |       | Add a custom metadata field. Repeatable                                     |              |
 
 ### `extract`
@@ -253,7 +271,7 @@ MDPDF processes a document through a well-defined pipeline:
 1. **Read** — The input `.md` file is read from disk.
 2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is.
 3. **Template** — The HTML body is wrapped in a full HTML document that includes the selected CSS template and the KaTeX math rendering library (CSS and JS are bundled into the binary at compile time, so no network access is needed).
-4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the pipeline first reads the `@page` margin values from the loaded template stylesheet via JavaScript, then measures the rendered content's `scrollWidth` and `scrollHeight`, adds the margins to both dimensions, injects a `@page` size override to suppress page fragmentation, and passes the result as `paper_width`/`paper_height` to Chrome — producing a single page that fits the content exactly with the template's original spacing intact.
+4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the pipeline first reads the `@page` margin values from the loaded template stylesheet via JavaScript, then measures the rendered content's `scrollWidth` and `scrollHeight`, adds the margins to both dimensions, injects a `@page` size override to suppress page fragmentation, and passes the result as `paper_width`/`paper_height` to Chrome — producing a single page that fits the content exactly with the template's original spacing intact. If `--manual-breaks` is set, a style is injected that suppresses all automatic `break-before` and `break-after` behaviour on every element that does not carry an explicit inline break rule, leaving author-specified page breaks intact while preventing Chrome from inserting its own.
 5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). Custom metadata fields are written to the PDF's Info dictionary.
 6. **Clean up** — The temporary HTML file is deleted (unless `--ghtml` was passed).
 
