@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
@@ -21,6 +22,86 @@ fn emit_progress(app: &AppHandle, event: &str, msg: &str, pct: u8, done: bool, e
         done,
         error: err,
     });
+}
+
+// ---------------------------------------------------------------------------
+// Configuration persistence
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AppConfig {
+    template: Option<String>,
+    css: Option<String>,
+    scale: Option<f64>,
+    generate_html: Option<bool>,
+    allow_html: Option<bool>,
+    one_page: Option<bool>,
+    manual_breaks: Option<bool>,
+    metadata: Option<Vec<MetadataEntry>>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct MetadataEntry {
+    key: String,
+    value: String,
+}
+
+fn config_dir() -> Option<PathBuf> {
+    dirs::config_dir().map(|d| d.join("mdpdf"))
+}
+
+fn config_file_path() -> Option<PathBuf> {
+    config_dir().map(|d| d.join("config.json"))
+}
+
+#[tauri::command]
+pub fn save_config(config: AppConfig) -> Result<(), String> {
+    let path = config_file_path()
+        .ok_or_else(|| "Cannot determine config directory".to_string())?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Cannot create config directory: {}", e))?;
+    }
+    let json = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Cannot serialize config: {}", e))?;
+    fs::write(&path, json)
+        .map_err(|e| format!("Cannot write config file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn load_config() -> Result<Option<AppConfig>, String> {
+    let path = match config_file_path() {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Cannot read config file: {}", e))?;
+    let config: AppConfig = serde_json::from_str(&content)
+        .map_err(|e| format!("Cannot parse config file: {}", e))?;
+    Ok(Some(config))
+}
+
+#[tauri::command]
+pub fn export_config(config: AppConfig, path: String) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Cannot serialize config: {}", e))?;
+    fs::write(&path, json)
+        .map_err(|e| format!("Cannot write config file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn import_config(path: String) -> Result<AppConfig, String> {
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Cannot read config file: {}", e))?;
+    let config: AppConfig = serde_json::from_str(&content)
+        .map_err(|e| format!("Cannot parse config file: {}", e))?;
+    Ok(config)
 }
 
 // ---------------------------------------------------------------------------
@@ -174,6 +255,10 @@ pub fn run() {
             render_pdf,
             extract_markdown,
             get_template_css,
+            save_config,
+            load_config,
+            export_config,
+            import_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

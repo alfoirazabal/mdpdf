@@ -10,10 +10,10 @@ const dialog  = window.__TAURI__.dialog;
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-let cmEditor             = null;   // CodeMirror instance
-let currentTemplateCss   = '';     // CSS that was last loaded from a template
+let cmEditor             = null;
+let currentTemplateCss   = '';
 let currentTemplateValue = 'print-a4';
-let isDirty              = false;  // editor content differs from currentTemplateCss
+let isDirty              = false;
 let renderRunning        = false;
 let extractRunning       = false;
 
@@ -26,8 +26,35 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    updateBottomBarVisibility();
   });
 });
+
+function updateBottomBarVisibility() {
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  const renderBtn = document.getElementById('render-btn');
+  const extractBtn = document.getElementById('extract-btn');
+  const renderLog = document.getElementById('render-log');
+  const extractLog = document.getElementById('extract-log');
+  const renderBar = document.getElementById('render-progress-bar');
+  const extractBar = document.getElementById('extract-progress-bar');
+
+  if (activeTab === 'render') {
+    renderBtn.style.display = '';
+    extractBtn.style.display = 'none';
+    renderLog.style.display = '';
+    extractLog.style.display = 'none';
+    renderBar.style.display = '';
+    extractBar.style.display = 'none';
+  } else {
+    renderBtn.style.display = 'none';
+    extractBtn.style.display = '';
+    renderLog.style.display = 'none';
+    extractLog.style.display = '';
+    renderBar.style.display = 'none';
+    extractBar.style.display = '';
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Dirty badge helper
@@ -71,7 +98,7 @@ async function loadTemplate(templateName) {
 }
 
 // ---------------------------------------------------------------------------
-// Template selector — warn before switching if there are unsaved edits
+// Template selector
 // ---------------------------------------------------------------------------
 function setupTemplateSelector() {
   const sel = document.getElementById('template-select');
@@ -85,7 +112,6 @@ function setupTemplateSelector() {
         { title: 'Unsaved CSS edits', kind: 'warning' }
       );
       if (!confirmed) {
-        // Revert the dropdown to the previously loaded template
         sel.value = currentTemplateValue;
         return;
       }
@@ -114,7 +140,6 @@ async function pickSaveFile(inputId, filters, defaultPath) {
   return path || null;
 }
 
-// Auto-populate output PDF path when a Markdown file is chosen
 function autoPopulateOutput(mdPath) {
   if (!mdPath) return;
   const pdfPath = mdPath.replace(/\.md$/i, '') + '.pdf';
@@ -160,6 +185,7 @@ function addMetadataEntry(key, val) {
   `;
   row.querySelector('.metadata-remove').addEventListener('click', () => row.remove());
   list.appendChild(row);
+  return row;
 }
 
 function escHtml(s) {
@@ -178,6 +204,36 @@ function collectMetadata() {
     if (k) entries.push(`${k}=${v}`);
   });
   return entries;
+}
+
+function collectMetadataObjects() {
+  const entries = [];
+  document.querySelectorAll('.metadata-entry').forEach(row => {
+    const k = row.querySelector('.metadata-key').value.trim();
+    const v = row.querySelector('.metadata-val').value.trim();
+    if (k) entries.push({ key: k, value: v });
+  });
+  return entries;
+}
+
+// ---------------------------------------------------------------------------
+// Metadata preset dropdown
+// ---------------------------------------------------------------------------
+function setupMetadataPreset() {
+  const sel = document.getElementById('metadata-preset');
+  sel.addEventListener('change', () => {
+    const val = sel.value;
+    sel.value = '';
+    if (!val) return;
+
+    if (val === '__custom__') {
+      const row = addMetadataEntry('', '');
+      row.querySelector('.metadata-key').focus();
+    } else {
+      const row = addMetadataEntry(val, '');
+      row.querySelector('.metadata-val').focus();
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +315,6 @@ function setupRenderButton() {
         }
       });
     } catch (err) {
-      // Command-level rejection (validation or unhandled error)
       const msg = (err && err.message) ? err.message : String(err);
       appendLogLine('render-log', `✗ ${msg}`, 'log-error');
       renderRunning = false;
@@ -301,27 +356,120 @@ function setupExtractButton() {
 }
 
 // ---------------------------------------------------------------------------
-// Metadata "Add field" button
+// Config save/load/export/import
 // ---------------------------------------------------------------------------
-function setupMetadataButton() {
-  document.getElementById('add-metadata').addEventListener('click', () => {
-    addMetadataEntry('', '');
-    const rows = document.querySelectorAll('.metadata-entry');
-    const last = rows[rows.length - 1];
-    if (last) last.querySelector('.metadata-key').focus();
+function gatherConfig() {
+  return {
+    template: currentTemplateValue,
+    css: cmEditor.getValue(),
+    scale: parseFloat(document.getElementById('opt-scale').value) || 1.0,
+    generateHtml: document.getElementById('opt-ghtml').checked,
+    allowHtml: document.getElementById('opt-allow-html').checked,
+    onePage: document.getElementById('opt-one-page').checked,
+    manualBreaks: document.getElementById('opt-manual-breaks').checked,
+    metadata: collectMetadataObjects(),
+  };
+}
+
+function applyConfig(config) {
+  if (config.template) {
+    document.getElementById('template-select').value = config.template;
+    currentTemplateValue = config.template;
+  }
+  if (config.css != null) {
+    cmEditor.setValue(config.css);
+    cmEditor.clearHistory();
+    currentTemplateCss = config.css;
+    setDirty(false);
+  }
+  if (config.scale != null) {
+    document.getElementById('opt-scale').value = config.scale;
+  }
+  if (config.generateHtml != null) {
+    document.getElementById('opt-ghtml').checked = config.generateHtml;
+  }
+  if (config.allowHtml != null) {
+    document.getElementById('opt-allow-html').checked = config.allowHtml;
+  }
+  if (config.onePage != null) {
+    document.getElementById('opt-one-page').checked = config.onePage;
+  }
+  if (config.manualBreaks != null) {
+    document.getElementById('opt-manual-breaks').checked = config.manualBreaks;
+  }
+  if (config.metadata && Array.isArray(config.metadata)) {
+    document.getElementById('metadata-list').innerHTML = '';
+    config.metadata.forEach(m => addMetadataEntry(m.key, m.value));
+  }
+}
+
+async function autoSaveConfig() {
+  try {
+    await invoke('save_config', { config: gatherConfig() });
+  } catch (_) {
+    // Silent failure for auto-save
+  }
+}
+
+async function loadSavedConfig() {
+  try {
+    const config = await invoke('load_config');
+    if (config) {
+      applyConfig(config);
+    }
+  } catch (_) {
+    // No saved config or error — use defaults
+  }
+}
+
+function setupConfigButtons() {
+  document.getElementById('config-export').addEventListener('click', async () => {
+    const path = await dialog.save({
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      defaultPath: 'mdpdf-config.json',
+    });
+    if (!path) return;
+    try {
+      await invoke('export_config', { config: gatherConfig(), path });
+    } catch (err) {
+      alert('Export failed: ' + (err.message || err));
+    }
+  });
+
+  document.getElementById('config-import').addEventListener('click', async () => {
+    const path = await dialog.open({
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      multiple: false,
+      directory: false,
+    });
+    if (!path) return;
+    try {
+      const config = await invoke('import_config', { path });
+      applyConfig(config);
+    } catch (err) {
+      alert('Import failed: ' + (err.message || err));
+    }
   });
 }
 
+// Auto-save config periodically and on window close
+let autoSaveTimer = null;
+function scheduleAutoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(autoSaveConfig, 2000);
+}
+
 // ---------------------------------------------------------------------------
-// Init — wire everything and load the default template
+// Init
 // ---------------------------------------------------------------------------
 async function init() {
   setupEditor();
   setupTemplateSelector();
   setupFilePickers();
-  setupMetadataButton();
+  setupMetadataPreset();
+  setupConfigButtons();
 
-  // Register progress listeners before setting up buttons
+  // Register progress listeners
   await Promise.all([
     listen('render_progress',  e => {
       handleProgressEvent('render-progress-bar', 'render-log', e.payload);
@@ -342,8 +490,31 @@ async function init() {
   setupRenderButton();
   setupExtractButton();
 
-  // Load the default template CSS into the editor
-  await loadTemplate('print-a4');
+  // Load saved config or fall back to default template
+  const config = await invoke('load_config').catch(() => null);
+  if (config) {
+    applyConfig(config);
+  } else {
+    await loadTemplate('print-a4');
+  }
+
+  updateBottomBarVisibility();
+
+  // Watch for changes to auto-save
+  const observer = new MutationObserver(scheduleAutoSave);
+  observer.observe(document.getElementById('metadata-list'), { childList: true, subtree: true });
+
+  // Auto-save on relevant input changes
+  document.querySelectorAll('#opt-scale, #opt-ghtml, #opt-allow-html, #opt-one-page, #opt-manual-breaks')
+    .forEach(el => el.addEventListener('change', scheduleAutoSave));
+  document.getElementById('template-select').addEventListener('change', scheduleAutoSave);
+
+  if (cmEditor) {
+    cmEditor.on('change', scheduleAutoSave);
+  }
+
+  // Save on close
+  window.addEventListener('beforeunload', () => autoSaveConfig());
 }
 
 document.addEventListener('DOMContentLoaded', init);

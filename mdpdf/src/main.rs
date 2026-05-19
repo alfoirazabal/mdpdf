@@ -1,3 +1,8 @@
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
 mod markdown;
 mod templates;
 mod pdf;
@@ -15,14 +20,6 @@ use std::fs;
 use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
-
-// On Windows release builds, use the GUI subsystem so the app can be launched
-// without a console window. When invoked from a terminal, Windows attaches the
-// parent console automatically so CLI I/O still works.
-#[cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
 
 fn perform_validations(custom_metadata: &[String], scale: f64) {
     helpers::args_validator::validate_custom_metadata(custom_metadata);
