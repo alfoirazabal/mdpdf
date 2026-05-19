@@ -2,7 +2,7 @@
 
 **Convert Markdown to beautifully styled PDFs — and extract the source back out.**
 
-MDPDF is a fast, self-contained CLI tool written in Rust that converts Markdown files into styled PDFs using headless Chrome for rendering. It ships with 11 built-in visual templates and supports custom CSS, KaTeX math rendering, and PDF metadata embedding. Every PDF it produces carries the original Markdown file embedded inside it, so you can always recover the source.
+MDPDF is a fast, self-contained tool written in Rust that converts Markdown files into styled PDFs using headless Chrome for rendering. It works both as a CLI tool and as a desktop GUI application (powered by Tauri). It ships with 11 built-in visual templates and supports custom CSS, KaTeX math rendering, and PDF metadata embedding. Every PDF it produces carries the original Markdown file embedded inside it, so you can always recover the source.
 
 ---
 
@@ -12,11 +12,13 @@ MDPDF is a fast, self-contained CLI tool written in Rust that converts Markdown 
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
+  - [GUI Mode](#gui-mode)
   - [render — Convert Markdown to PDF](#render--convert-markdown-to-pdf)
   - [extract — Recover Markdown from PDF](#extract--recover-markdown-from-pdf)
 - [Templates](#templates)
 - [Custom Templates](#custom-templates)
 - [PDF Metadata](#pdf-metadata)
+- [Configuration](#configuration)
 - [Options Reference](#options-reference)
 - [How It Works](#how-it-works)
 - [Building from Source](#building-from-source)
@@ -26,20 +28,23 @@ MDPDF is a fast, self-contained CLI tool written in Rust that converts Markdown 
 
 ## Features
 
+- **Dual interface:** desktop GUI and full-featured CLI in a single binary
 - Converts any Markdown file to a styled, print-ready PDF
 - 11 built-in templates across mobile, tablet, widescreen, and A4 print layouts — each available in light and dark variants
-- Custom CSS template support for full visual control
+- Custom CSS template support for full visual control — live CSS editor in the GUI
 - KaTeX math rendering built in — no external CDN required
 - Markdown extensions: tables, footnotes, and strikethrough
 - Optional raw HTML passthrough — keep `<div>`, `<span>`, custom tags, and inline styles intact in the output
 - Embedded source: the original `.md` file is embedded inside the output PDF
 - Bidirectional workflow: recover the source Markdown from any MDPDF-generated PDF
-- Custom PDF metadata (Title, Author, Subject, Keywords, or any key)
+- Custom PDF metadata (Title, Author, Subject, Keywords, or any key) — GUI offers preset fields
 - Adjustable PDF scale factor
 - Single-page output mode: measures rendered content and sets the PDF page to fit it exactly — no clipping, no scrolling void
 - Manual page break mode: suppress all automatic Chrome page breaks and break only on explicit CSS indicators in the content
 - Optional intermediate HTML output for debugging your styles
 - Zero-margin PDF output with full background color support
+- Configuration persistence: auto-saves settings to platform config directory, plus manual import/export
+- Works fully offline — all assets are bundled at compile time
 
 ---
 
@@ -66,7 +71,7 @@ mv mdpdf /usr/local/bin/
 
 ```sh
 git clone https://github.com/alfoirazabal/mdpdf.git
-cd mdpdf
+cd mdpdf/mdpdf
 cargo build --release
 ```
 
@@ -76,7 +81,29 @@ The compiled binary will be at `target/release/mdpdf`.
 
 ## Usage
 
-MDPDF has two subcommands: `render` and `extract`.
+MDPDF automatically launches in **GUI mode** when run without arguments, or in **CLI mode** when invoked with a subcommand (`render` or `extract`).
+
+On Windows, launching the GUI (e.g. by double-clicking the executable) does not spawn a console window.
+
+---
+
+### GUI Mode
+
+Simply run `mdpdf` with no arguments to open the desktop application.
+
+```sh
+mdpdf
+```
+
+The GUI provides:
+
+- **Two-column layout** — Left panel for Files, PDF Metadata, and Options; right panel for the live CSS editor
+- **Template picker** — Select from 11 built-in templates; the CSS editor auto-populates with the template's styles for customization
+- **PDF Metadata editor** — Dropdown with common preset fields (Title, Author, Subject, Keywords, Creator, Producer) plus custom key support
+- **Progress indicator** — Always-visible bottom bar with real-time rendering/extraction progress and action buttons
+- **Configuration persistence** — Settings auto-save to the platform config directory; Import/Export buttons allow sharing configs as JSON files
+
+Output file paths: if you specify only a filename (without a directory), the output is placed in the same directory as the input file.
 
 ---
 
@@ -208,7 +235,7 @@ When no `--template` flag is provided, `print-a4` is used.
 
 ## Custom Templates
 
-If the built-in templates do not fit your needs, you can supply your own CSS file with `--custom-template-path`. The CSS is injected into the `<head>` of the rendered HTML document and controls all visual styling.
+If the built-in templates do not fit your needs, you can supply your own CSS file with `--custom-template-path` (CLI) or edit the CSS directly in the GUI editor.
 
 ```sh
 mdpdf render document.md --output document.pdf --custom-template-path ./custom.css
@@ -218,11 +245,13 @@ A good starting point is to export the intermediate HTML with `--ghtml`, inspect
 
 When `--custom-template-path` is set, `--template` is ignored.
 
+In the GUI, select any built-in template to populate the editor with its CSS, then modify it freely — the editor content is what gets rendered.
+
 ---
 
 ## PDF Metadata
 
-You can embed metadata into the output PDF using the `--cm` flag. Each value must follow the format `key=value`. The flag can be repeated to set multiple fields.
+You can embed metadata into the output PDF using the `--cm` flag (CLI) or the PDF Metadata section (GUI). Each value must follow the format `key=value`. The flag can be repeated to set multiple fields.
 
 ```sh
 mdpdf render paper.md --output paper.pdf \
@@ -234,7 +263,25 @@ mdpdf render paper.md --output paper.pdf \
 
 Standard PDF metadata keys are `Title`, `Author`, `Subject`, and `Keywords`, but any custom key is accepted. Values are stored as UTF-16 strings for full Unicode support.
 
+In the GUI, a dropdown provides quick access to common metadata fields (Title, Author, Subject, Keywords, Creator, Producer) and also allows adding custom keys.
+
 MDPDF also automatically sets the `Creator` metadata field to `MDPDF v<version>`.
+
+---
+
+## Configuration
+
+MDPDF automatically saves your GUI settings (template, CSS, options, and metadata) to the platform-appropriate configuration directory:
+
+| Platform | Config path                                    |
+|----------|------------------------------------------------|
+| Linux    | `~/.config/mdpdf/config.json`                  |
+| macOS    | `~/Library/Application Support/mdpdf/config.json` |
+| Windows  | `%APPDATA%\mdpdf\config.json`                  |
+
+Settings are restored automatically when the application starts.
+
+You can also manually export and import configurations as JSON files using the **Import** and **Export** buttons in the GUI header. This is useful for sharing rendering presets across machines or team members.
 
 ---
 
@@ -285,7 +332,7 @@ Requires Rust 1.85 or later (edition 2024).
 
 ```sh
 git clone https://github.com/alfoirazabal/mdpdf.git
-cd mdpdf
+cd mdpdf/mdpdf
 cargo build --release
 ```
 
@@ -311,6 +358,9 @@ cargo test
 | `anyhow`           | Ergonomic error handling                             |
 | `url`              | File path to `file://` URL conversion                |
 | `serde_json`       | Parsing JS-evaluated content dimensions in one-page mode |
+| `tauri`            | Desktop GUI framework                                |
+| `tauri-plugin-dialog` | Native file/save dialogs for the GUI              |
+| `dirs`             | Platform-appropriate config directory resolution     |
 
 KaTeX (CSS and JS) is bundled directly into the binary at compile time via `include_str!`.
 
