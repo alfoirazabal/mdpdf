@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MDPDF</title>
+  <link rel="stylesheet" href="vendor/codemirror.min.css" />
+  <link rel="stylesheet" href="vendor/theme-dracula.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <span class="app-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      MDPDF
+    </span>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="render">Render</button>
+      <button class="tab-btn" data-tab="extract">Extract</button>
+    </nav>
+  </header>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <main class="app-main">
+
+    <!-- ════════════════════════════════════════════════════════════
+         RENDER TAB
+         ════════════════════════════════════════════════════════════ -->
+    <section id="tab-render" class="tab-content active">
+
+      <!-- Files -------------------------------------------------- -->
+      <div class="card">
+        <h2 class="card-title">Files</h2>
+        <div class="field-row">
+          <label class="field-label" for="render-input">Input Markdown</label>
+          <div class="file-row">
+            <input class="file-path-input" type="text" id="render-input"
+                   placeholder="Select a .md file…" readonly />
+            <button class="btn btn-secondary" id="render-input-browse">Browse…</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field-label" for="render-output">Output PDF</label>
+          <div class="file-row">
+            <input class="file-path-input" type="text" id="render-output"
+                   placeholder="Select output path…" />
+            <button class="btn btn-secondary" id="render-output-browse">Browse…</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Template & CSS editor ---------------------------------- -->
+      <div class="card">
+        <div class="template-header">
+          <h2 class="card-title">Template &amp; CSS</h2>
+          <span id="dirty-badge" class="dirty-badge hidden">● unsaved edits</span>
+        </div>
+
+        <div class="field-row">
+          <label class="field-label" for="template-select">Built-in template</label>
+          <select class="select" id="template-select">
+            <option value="print-a4">print-a4 — clean white A4 (default)</option>
+            <option value="print-a4-light">print-a4-light — light A4</option>
+            <option value="print-a4-dark">print-a4-dark — dark A4</option>
+            <option value="mobile-light">mobile-light — light mobile</option>
+            <option value="mobile-dark">mobile-dark — dark mobile</option>
+            <option value="tablet-light">tablet-light — light tablet</option>
+            <option value="tablet-dark">tablet-dark — dark tablet</option>
+            <option value="widescreen-light">widescreen-light — light widescreen</option>
+            <option value="widescreen-dark">widescreen-dark — dark widescreen</option>
+            <option value="widescreen-cut-light">widescreen-cut-light — light widescreen cutout</option>
+            <option value="widescreen-cut-dark">widescreen-cut-dark — dark widescreen cutout</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <label class="field-label css-editor-label">
+            CSS editor
+            <span class="hint">— edit freely; the text below is always what gets rendered</span>
+          </label>
+          <div class="editor-wrapper">
+            <textarea id="css-editor"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options ------------------------------------------------ -->
+      <details class="card options-details">
+        <summary class="options-summary">Options <span class="hint">(click to expand)</span></summary>
+
+        <div class="options-grid">
+          <label class="option-label">
+            Scale
+            <input class="number-input" type="number" id="opt-scale"
+                   min="0.1" max="2.0" step="0.1" value="1.0" />
+            <span class="hint">0.1 – 2.0</span>
+          </label>
+
+          <label class="option-label checkbox-label">
+            <input type="checkbox" id="opt-ghtml" />
+            Keep intermediate HTML file
+          </label>
+
+          <label class="option-label checkbox-label">
+            <input type="checkbox" id="opt-allow-html" />
+            Allow raw HTML passthrough
+          </label>
+
+          <label class="option-label checkbox-label">
+            <input type="checkbox" id="opt-one-page" />
+            Single-page output
+          </label>
+
+          <label class="option-label checkbox-label">
+            <input type="checkbox" id="opt-manual-breaks" />
+            Manual page breaks only
+          </label>
+        </div>
+
+        <!-- Metadata ------------------------------------------- -->
+        <div class="metadata-section">
+          <div class="metadata-header">
+            <span class="field-label">PDF Metadata</span>
+            <button class="btn btn-ghost btn-sm" id="add-metadata">+ Add field</button>
+          </div>
+          <div id="metadata-list" class="metadata-list"></div>
+        </div>
+      </details>
+
+      <!-- Render button ------------------------------------------ -->
+      <button class="btn btn-primary btn-render" id="render-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Render PDF
+      </button>
+
+      <!-- Progress ---------------------------------------------- -->
+      <div class="card progress-card" id="render-progress-section">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="render-progress-bar"></div>
+        </div>
+        <div class="progress-log" id="render-log" aria-live="polite"></div>
+      </div>
+
+    </section><!-- /tab-render -->
+
+
+    <!-- ════════════════════════════════════════════════════════════
+         EXTRACT TAB
+         ════════════════════════════════════════════════════════════ -->
+    <section id="tab-extract" class="tab-content">
+
+      <div class="card">
+        <h2 class="card-title">Files</h2>
+        <div class="field-row">
+          <label class="field-label" for="extract-input">Input PDF</label>
+          <div class="file-row">
+            <input class="file-path-input" type="text" id="extract-input"
+                   placeholder="Select an MDPDF-generated .pdf file…" readonly />
+            <button class="btn btn-secondary" id="extract-input-browse">Browse…</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field-label" for="extract-output">Output Markdown</label>
+          <div class="file-row">
+            <input class="file-path-input" type="text" id="extract-output"
+                   placeholder="Select output path…" />
+            <button class="btn btn-secondary" id="extract-output-browse">Browse…</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-render" id="extract-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Extract Markdown
+      </button>
+
+      <div class="card progress-card" id="extract-progress-section">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="extract-progress-bar"></div>
+        </div>
+        <div class="progress-log" id="extract-log" aria-live="polite"></div>
+      </div>
+
+    </section><!-- /tab-extract -->
+
+  </main>
+
+  <script src="vendor/codemirror.min.js"></script>
+  <script src="vendor/mode-css.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

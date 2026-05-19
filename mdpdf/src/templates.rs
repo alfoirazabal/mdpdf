@@ -40,6 +40,66 @@ fn get_css_style(template_type: Option<Template>) -> &'static str {
   }
 }
 
+/// Returns the built-in CSS for the given template name string (kebab-case).
+/// Falls back to the default `print-a4` template for unknown names.
+pub fn get_template_css_by_name(name: &str) -> &'static str {
+  match name {
+    "mobile-dark"          => CSS_STYLE_MOBILE_DARK,
+    "mobile-light"         => CSS_STYLE_MOBILE_LIGHT,
+    "tablet-dark"          => CSS_STYLE_TABLET_DARK,
+    "tablet-light"         => CSS_STYLE_TABLET_LIGHT,
+    "widescreen-dark"      => CSS_STYLE_WIDESCREEN_DARK,
+    "widescreen-light"     => CSS_STYLE_WIDESCREEN_LIGHT,
+    "widescreen-cut-dark"  => CSS_STYLE_WIDESCREEN_CUT_DARK,
+    "widescreen-cut-light" => CSS_STYLE_WIDESCREEN_CUT_LIGHT,
+    "print-a4-dark"        => CSS_STYLE_PRINT_A4_DARK,
+    "print-a4-light"       => CSS_STYLE_PRINT_A4_LIGHT,
+    _                      => CSS_STYLE_PRINT_A4,
+  }
+}
+
+/// Wraps HTML body with the given CSS inline — used by the GUI where the CSS
+/// comes directly from the editor (never from a file path).
+pub fn wrap_html_with_inline_css(body: &str, title: &str, css: &str) -> String {
+  format!(
+r#"<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{}</title>
+
+<style>
+{}
+</style>
+
+<script>
+{}
+</script>
+
+<script>
+{}
+{}
+</script>
+
+<style>
+{}
+</style>
+
+</head>
+<body>
+{}
+</body>
+</html>"#,
+    title,
+    KATEX_CSS,
+    KATEX_JS,
+    AUTO_RENDER_JS,
+    RENDER_MATH_IN_ELEMENT_CALLER,
+    css,
+    body
+  )
+}
+
 pub fn wrap_html(body: &str, title: &str, template_type: Option<Template>, template_path: Option<String>) -> String {
 
   let template = match template_path {
