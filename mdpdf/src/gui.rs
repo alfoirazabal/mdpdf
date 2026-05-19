@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
@@ -22,6 +22,21 @@ fn emit_progress(app: &AppHandle, event: &str, msg: &str, pct: u8, done: bool, e
         done,
         error: err,
     });
+}
+
+/// If output_path is relative (no directory component), resolve it relative to
+/// the input file's parent directory instead of the process cwd.
+fn resolve_output_path(input_path: &str, output_path: &str) -> String {
+    let out = Path::new(output_path);
+    if out.is_absolute() || out.parent().is_some_and(|p| p != Path::new("")) {
+        return output_path.to_string();
+    }
+    // Bare filename — place next to the input file
+    if let Some(parent) = Path::new(input_path).parent() {
+        parent.join(output_path).to_string_lossy().to_string()
+    } else {
+        output_path.to_string()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,7 +162,9 @@ pub async fn render_pdf(app: AppHandle, params: RenderParams) -> Result<(), Stri
         }
     }
 
-    let output_filename = crate::fix_output_filename(&params.output_path);
+    let output_filename = crate::fix_output_filename(
+        &resolve_output_path(&params.input_path, &params.output_path),
+    );
 
     emit_progress(&app, "render_progress", "Reading Markdown…", 10, false, None);
     let md = fs::read_to_string(&params.input_path)
@@ -219,15 +236,17 @@ pub struct ExtractParams {
 
 #[tauri::command]
 pub async fn extract_markdown(app: AppHandle, params: ExtractParams) -> Result<(), String> {
+    let output_path = resolve_output_path(&params.input_path, &params.output_path);
+
     emit_progress(&app, "extract_progress", "Extracting Markdown from PDF…", 50, false, None);
 
-    crate::extract::extract_file(&params.input_path, &params.output_path)
+    crate::extract::extract_file(&params.input_path, &output_path)
         .map_err(|e| e.to_string())?;
 
     emit_progress(
         &app,
         "extract_progress",
-        &format!("Done! Saved to {}", params.output_path),
+        &format!("Done! Saved to {}", output_path),
         100,
         true,
         None,
