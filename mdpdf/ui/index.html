@@ -127,20 +127,33 @@
             </div>
 
             <div class="field-row">
-              <label class="field-label" for="template-select">Built-in template</label>
-              <select class="select" id="template-select">
-                <option value="print-a4">print-a4 — clean white A4 (default)</option>
-                <option value="print-a4-light">print-a4-light — light A4</option>
-                <option value="print-a4-dark">print-a4-dark — dark A4</option>
-                <option value="mobile-light">mobile-light — light mobile</option>
-                <option value="mobile-dark">mobile-dark — dark mobile</option>
-                <option value="tablet-light">tablet-light — light tablet</option>
-                <option value="tablet-dark">tablet-dark — dark tablet</option>
-                <option value="widescreen-light">widescreen-light — light widescreen</option>
-                <option value="widescreen-dark">widescreen-dark — dark widescreen</option>
-                <option value="widescreen-cut-light">widescreen-cut-light — light widescreen cutout</option>
-                <option value="widescreen-cut-dark">widescreen-cut-dark — dark widescreen cutout</option>
-              </select>
+              <label class="field-label" for="template-select">Template</label>
+              <div class="template-select-row">
+                <select class="select" id="template-select">
+                  <optgroup label="User Templates" id="user-templates-group">
+                  </optgroup>
+                  <optgroup label="Built-in Templates">
+                    <option value="print-a4">print-a4 — clean white A4 (default)</option>
+                    <option value="print-a4-light">print-a4-light — light A4</option>
+                    <option value="print-a4-dark">print-a4-dark — dark A4</option>
+                    <option value="mobile-light">mobile-light — light mobile</option>
+                    <option value="mobile-dark">mobile-dark — dark mobile</option>
+                    <option value="tablet-light">tablet-light — light tablet</option>
+                    <option value="tablet-dark">tablet-dark — dark tablet</option>
+                    <option value="widescreen-light">widescreen-light — light widescreen</option>
+                    <option value="widescreen-dark">widescreen-dark — dark widescreen</option>
+                    <option value="widescreen-cut-light">widescreen-cut-light — light widescreen cutout</option>
+                    <option value="widescreen-cut-dark">widescreen-cut-dark — dark widescreen cutout</option>
+                  </optgroup>
+                </select>
+                <div class="template-actions">
+                  <button class="btn btn-secondary btn-sm" id="tmpl-save-new" title="Save current CSS as a new template">Save New</button>
+                  <button class="btn btn-secondary btn-sm" id="tmpl-edit" title="Edit selected user template" disabled>Edit</button>
+                  <button class="btn btn-secondary btn-sm btn-danger-hover" id="tmpl-delete" title="Delete selected user template" disabled>Delete</button>
+                  <button class="btn btn-ghost btn-sm" id="tmpl-export" title="Export template to file">Export</button>
+                  <button class="btn btn-ghost btn-sm" id="tmpl-import" title="Import template from file">Import</button>
+                </div>
+              </div>
             </div>
 
             <div class="field-row field-row-grow">

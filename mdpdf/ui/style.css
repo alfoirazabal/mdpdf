@@ -237,6 +237,24 @@ html, body {
   gap: 10px;
 }
 
+.template-select-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.template-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.btn-danger-hover:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+  background: rgba(243,139,168,.08);
+}
+
 .dirty-badge {
   font-size: 11px;
   font-weight: 600;

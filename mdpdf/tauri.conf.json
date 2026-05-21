@@ -11,12 +11,12 @@
     "windows": [
       {
         "title": "MDPDF",
-        "width": 1100,
-        "height": 800,
+        "width": 890,
+        "height": 540,
         "resizable": true,
         "center": true,
-        "minWidth": 1024,
-        "minHeight": 768
+        "minWidth": 890,
+        "minHeight": 540
       }
     ],
     "security": {
