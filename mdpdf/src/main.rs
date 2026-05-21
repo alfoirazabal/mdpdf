@@ -1,7 +1,7 @@
-#![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
+// On Windows we do NOT set windows_subsystem = "windows" at compile time.
+// Instead we detach from the console at runtime when launching in GUI mode.
+// This allows CLI invocations to work naturally (the shell waits and output
+// appears correctly) while the GUI still launches without a visible console.
 
 mod markdown;
 mod templates;
@@ -60,6 +60,22 @@ fn is_cli_invocation() -> bool {
         _ => false,
     }
 }
+
+/// On Windows, hide and detach the console window when launching in GUI mode.
+/// Since we no longer use `windows_subsystem = "windows"`, the process starts
+/// as a console app. In GUI mode we free the console so no black window appears.
+#[cfg(target_os = "windows")]
+fn detach_console() {
+    unsafe extern "system" {
+        fn FreeConsole() -> i32;
+    }
+    unsafe {
+        FreeConsole();
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn detach_console() {}
 
 async fn run_cli() -> Result<()> {
     let cli = Cli::parse();
@@ -142,6 +158,7 @@ fn main() {
             std::process::exit(1);
         }
     } else {
+        detach_console();
         gui::run();
     }
 }
