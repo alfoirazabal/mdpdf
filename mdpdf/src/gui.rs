@@ -40,6 +40,133 @@ fn resolve_output_path(input_path: &str, output_path: &str) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// User CSS template persistence
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct UserTemplate {
+    name: String,
+    description: String,
+    css: String,
+}
+
+fn templates_dir() -> Option<PathBuf> {
+    dirs::data_dir().map(|d| d.join("mdpdf").join("templates"))
+}
+
+fn sanitize_filename(name: &str) -> String {
+    name.chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect()
+}
+
+#[tauri::command]
+pub fn list_user_templates() -> Result<Vec<UserTemplate>, String> {
+    let dir = match templates_dir() {
+        Some(d) => d,
+        None => return Ok(Vec::new()),
+    };
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut templates = Vec::new();
+    let entries = fs::read_dir(&dir)
+        .map_err(|e| format!("Cannot read templates directory: {}", e))?;
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let tmpl: UserTemplate = match serde_json::from_str(&content) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        templates.push(tmpl);
+    }
+    templates.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    Ok(templates)
+}
+
+#[tauri::command]
+pub fn save_user_template(template: UserTemplate) -> Result<(), String> {
+    let dir = templates_dir()
+        .ok_or_else(|| "Cannot determine templates directory".to_string())?;
+    fs::create_dir_all(&dir)
+        .map_err(|e| format!("Cannot create templates directory: {}", e))?;
+    let filename = format!("{}.json", sanitize_filename(&template.name));
+    let path = dir.join(&filename);
+    if path.exists() {
+        return Err(format!("A template named '{}' already exists.", template.name));
+    }
+    let json = serde_json::to_string_pretty(&template)
+        .map_err(|e| format!("Cannot serialize template: {}", e))?;
+    fs::write(&path, json)
+        .map_err(|e| format!("Cannot write template file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_user_template(old_name: String, template: UserTemplate) -> Result<(), String> {
+    let dir = templates_dir()
+        .ok_or_else(|| "Cannot determine templates directory".to_string())?;
+    // Remove old file
+    let old_filename = format!("{}.json", sanitize_filename(&old_name));
+    let old_path = dir.join(&old_filename);
+    if old_path.exists() {
+        fs::remove_file(&old_path)
+            .map_err(|e| format!("Cannot remove old template file: {}", e))?;
+    }
+    // Write new file
+    let new_filename = format!("{}.json", sanitize_filename(&template.name));
+    let new_path = dir.join(&new_filename);
+    let json = serde_json::to_string_pretty(&template)
+        .map_err(|e| format!("Cannot serialize template: {}", e))?;
+    fs::write(&new_path, json)
+        .map_err(|e| format!("Cannot write template file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_user_template(name: String) -> Result<(), String> {
+    let dir = templates_dir()
+        .ok_or_else(|| "Cannot determine templates directory".to_string())?;
+    let filename = format!("{}.json", sanitize_filename(&name));
+    let path = dir.join(&filename);
+    if !path.exists() {
+        return Err(format!("Template '{}' not found.", name));
+    }
+    fs::remove_file(&path)
+        .map_err(|e| format!("Cannot delete template: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn export_user_template(template: UserTemplate, path: String) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(&template)
+        .map_err(|e| format!("Cannot serialize template: {}", e))?;
+    fs::write(&path, json)
+        .map_err(|e| format!("Cannot write template file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn import_user_template(path: String) -> Result<UserTemplate, String> {
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Cannot read template file: {}", e))?;
+    let template: UserTemplate = serde_json::from_str(&content)
+        .map_err(|e| format!("Cannot parse template file: {}", e))?;
+    Ok(template)
+}
+
+// ---------------------------------------------------------------------------
 // Configuration persistence
 // ---------------------------------------------------------------------------
 
@@ -278,6 +405,12 @@ pub fn run() {
             load_config,
             export_config,
             import_config,
+            list_user_templates,
+            save_user_template,
+            update_user_template,
+            delete_user_template,
+            export_user_template,
+            import_user_template,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
