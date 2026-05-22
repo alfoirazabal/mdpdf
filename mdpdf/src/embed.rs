@@ -3,6 +3,7 @@ use lopdf::{Document, Object};
 use std::fs;
 
 pub const SOURCE_MD_FILE_NAME: &str = "SOURCE_MD_FILE.md";
+pub const SOURCE_CSS_FILE_NAME: &str = "SOURCE_CSS_TEMPLATE.css";
 
 fn create_embedded_file(
     doc: &mut lopdf::Document,
@@ -18,11 +19,12 @@ fn create_embedded_file(
 fn create_filespec(
     doc: &mut lopdf::Document,
     ef_ref: lopdf::ObjectId,
+    file_name: &str,
 ) -> lopdf::ObjectId {
     let mut filespec = lopdf::Dictionary::new();
     filespec.set("Type", "Filespec");
-    filespec.set("F", lopdf::Object::string_literal(SOURCE_MD_FILE_NAME));
-    filespec.set("UF", lopdf::Object::string_literal(SOURCE_MD_FILE_NAME));
+    filespec.set("F", lopdf::Object::string_literal(file_name));
+    filespec.set("UF", lopdf::Object::string_literal(file_name));
 
     let mut ef_entry = lopdf::Dictionary::new();
     ef_entry.set("F", ef_ref);
@@ -34,12 +36,13 @@ fn create_filespec(
 
 fn create_embedded_files_tree(
     doc: &mut lopdf::Document,
-    file_name: &str,
-    filespec_ref: lopdf::ObjectId,
+    entries: Vec<(&str, lopdf::ObjectId)>,
 ) -> lopdf::ObjectId {
     let mut names_array = Vec::new();
-    names_array.push(lopdf::Object::string_literal(file_name));
-    names_array.push(lopdf::Object::Reference(filespec_ref));
+    for (name, filespec_ref) in entries {
+        names_array.push(lopdf::Object::string_literal(name));
+        names_array.push(lopdf::Object::Reference(filespec_ref));
+    }
 
     let mut embedded_files = lopdf::Dictionary::new();
     embedded_files.set("Names", lopdf::Object::Array(names_array));
@@ -93,13 +96,27 @@ fn make_pdf_utf16_string(s: &str) -> Object {
     Object::String(bytes, lopdf::StringFormat::Literal)
 }
 
-pub fn attach_file_and_embed_metadata(output_path: &str, input_path: &str, custom_metadata: &[String]) -> Result<()> {
+pub fn attach_file_and_embed_metadata(
+    output_path: &str,
+    input_path: &str,
+    custom_metadata: &[String],
+    css_content: Option<&str>,
+) -> Result<()> {
     let mut doc = Document::load(output_path)?;
     let data = fs::read(input_path)?;
 
-    let ef_ref = create_embedded_file(&mut doc, data);
-    let filespec_ref = create_filespec(&mut doc, ef_ref);
-    let tree_ref = create_embedded_files_tree(&mut doc, SOURCE_MD_FILE_NAME, filespec_ref);
+    let md_ef_ref = create_embedded_file(&mut doc, data);
+    let md_filespec_ref = create_filespec(&mut doc, md_ef_ref, SOURCE_MD_FILE_NAME);
+
+    let mut entries: Vec<(&str, lopdf::ObjectId)> = vec![(SOURCE_MD_FILE_NAME, md_filespec_ref)];
+
+    if let Some(css) = css_content {
+        let css_ef_ref = create_embedded_file(&mut doc, css.as_bytes().to_vec());
+        let css_filespec_ref = create_filespec(&mut doc, css_ef_ref, SOURCE_CSS_FILE_NAME);
+        entries.push((SOURCE_CSS_FILE_NAME, css_filespec_ref));
+    }
+
+    let tree_ref = create_embedded_files_tree(&mut doc, entries);
 
     let info_id = doc.trailer.get(b"Info")
         .and_then(|obj| obj.as_reference())

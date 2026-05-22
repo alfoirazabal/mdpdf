@@ -114,6 +114,11 @@
                 <input type="checkbox" id="opt-manual-breaks" />
                 Manual page breaks only
               </label>
+
+              <label class="option-label checkbox-label">
+                <input type="checkbox" id="opt-embed-css" checked />
+                Embed CSS template in PDF
+              </label>
             </div>
           </details>
         </div>
@@ -192,6 +197,14 @@
             <input class="file-path-input" type="text" id="extract-output"
                    placeholder="Select output path…" />
             <button class="btn btn-secondary" id="extract-output-browse">Browse…</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field-label" for="extract-css-output">Output CSS <span class="hint">(auto-filled from Markdown path)</span></label>
+          <div class="file-row">
+            <input class="file-path-input" type="text" id="extract-css-output"
+                   placeholder="e.g. document.css (auto-filled)" />
+            <button class="btn btn-secondary" id="extract-css-output-browse">Browse…</button>
           </div>
         </div>
       </div>

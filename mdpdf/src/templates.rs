@@ -58,7 +58,16 @@ pub fn get_template_css_by_name(name: &str) -> &'static str {
   }
 }
 
-/// Wraps HTML body with the given CSS inline — used by the GUI where the CSS
+/// Returns the CSS string for the given template and optional custom path.
+/// Used by the CLI to obtain the CSS content for embedding into the PDF.
+pub fn get_css_content(template_type: Option<Template>, template_path: Option<String>) -> String {
+    match template_path {
+        Some(path) => read_template_from_file(&path),
+        None => get_css_style(template_type).to_string(),
+    }
+}
+
+
 /// comes directly from the editor (never from a file path).
 pub fn wrap_html_with_inline_css(body: &str, title: &str, css: &str) -> String {
   format!(
