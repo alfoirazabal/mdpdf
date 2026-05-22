@@ -2,7 +2,7 @@
 
 **Convert Markdown to beautifully styled PDFs — and extract the source back out.**
 
-MDPDF is a fast, self-contained tool written in Rust that converts Markdown files into styled PDFs using headless Chrome for rendering. It works both as a CLI tool and as a desktop GUI application (powered by Tauri). It ships with 11 built-in visual templates and supports custom CSS, KaTeX math rendering, and PDF metadata embedding. Every PDF it produces carries the original Markdown file embedded inside it, so you can always recover the source.
+MDPDF is a fast, self-contained tool written in Rust that converts Markdown files into styled PDFs using headless Chrome for rendering. It works both as a CLI tool and as a desktop GUI application (powered by Tauri). It ships with 11 built-in visual templates and supports custom CSS, KaTeX math rendering, and PDF metadata embedding. Every PDF it produces carries the original Markdown source and the CSS template embedded inside it, so you can always recover both.
 
 ---
 
@@ -35,8 +35,8 @@ MDPDF is a fast, self-contained tool written in Rust that converts Markdown file
 - KaTeX math rendering built in — no external CDN required
 - Markdown extensions: tables, footnotes, and strikethrough
 - Optional raw HTML passthrough — keep `<div>`, `<span>`, custom tags, and inline styles intact in the output
-- Embedded source: the original `.md` file is embedded inside the output PDF
-- Bidirectional workflow: recover the source Markdown from any MDPDF-generated PDF
+- Embedded source: the original `.md` file **and** the CSS template are embedded inside the output PDF by default — disable with `--no-embed-css` (CLI) or the **Embed CSS template in PDF** checkbox (GUI)
+- Bidirectional workflow: recover the Markdown source and the CSS template from any MDPDF-generated PDF; older PDFs without an embedded CSS are handled gracefully
 - Custom PDF metadata (Title, Author, Subject, Keywords, or any key) — GUI offers preset fields
 - Adjustable PDF scale factor
 - Single-page output mode: measures rendered content and sets the PDF page to fit it exactly — no clipping, no scrolling void
@@ -100,6 +100,8 @@ The GUI provides:
 - **Two-column layout** — Left panel for Files, PDF Metadata, and Options; right panel for the live CSS editor
 - **Template picker** — Select from 11 built-in templates; the CSS editor auto-populates with the template's styles for customization
 - **PDF Metadata editor** — Dropdown with common preset fields (Title, Author, Subject, Keywords, Creator, Producer) plus custom key support
+- **Embed CSS option** — "Embed CSS template in PDF" checkbox in the Options panel (checked by default); uncheck to omit the CSS from the embedded files in the output PDF
+- **Extract tab** — Choose an input PDF, specify the output Markdown path, and optionally override the output CSS path (auto-filled as `<markdown_stem>.css`); the log shows whether a CSS template was also recovered
 - **Progress indicator** — Always-visible bottom bar with real-time rendering/extraction progress and action buttons
 - **Configuration persistence** — Settings auto-save to the platform config directory; Import/Export buttons allow sharing configs as JSON files
 
@@ -151,6 +153,14 @@ mdpdf render document.md --output document.pdf --ghtml
 
 This produces both `document.pdf` and `document.pdf.html` so you can inspect exactly what Chrome is rendering.
 
+**Disable CSS template embedding:**
+
+```sh
+mdpdf render document.md --output document.pdf --no-embed-css
+```
+
+By default, both the Markdown source and the CSS template are embedded inside the output PDF. Pass `--no-embed-css` to omit the CSS. The Markdown source is always embedded regardless of this flag. PDFs rendered with `--no-embed-css` will report "No CSS template was embedded in this PDF" when extracted.
+
 **Allow raw HTML elements in your Markdown source:**
 
 ```sh
@@ -195,10 +205,10 @@ The template `@page` size, margins, and all other visual styling are preserved e
 
 ### `extract` — Recover Markdown from PDF
 
-Any PDF produced by MDPDF contains the original Markdown file embedded inside it. Use the `extract` command to recover it.
+Any PDF produced by MDPDF contains the original Markdown source embedded inside it. PDFs produced with CSS embedding enabled (the default) also carry the CSS template. Use the `extract` command to recover them.
 
 ```sh
-mdpdf extract <INPUT> --output <OUTPUT>
+mdpdf extract <INPUT> --output <OUTPUT> [--css-output <CSS_OUTPUT>]
 ```
 
 **Example:**
@@ -207,7 +217,27 @@ mdpdf extract <INPUT> --output <OUTPUT>
 mdpdf extract document.pdf --output recovered.md
 ```
 
-This writes the embedded Markdown source to `recovered.md`. If the PDF was not created by MDPDF, the command exits with an error.
+This writes the embedded Markdown source to `recovered.md`. The CSS template is simultaneously extracted to `recovered.css` (the default — same stem as `--output`, `.css` extension). The command reports what was extracted:
+
+```
+Extracted Markdown → recovered.md
+Extracted CSS template → recovered.css
+```
+
+If the PDF was rendered with `--no-embed-css`, or was produced by an older version of MDPDF that did not embed the CSS, the Markdown is still extracted and the output notes:
+
+```
+Extracted Markdown → recovered.md
+Note: No CSS template was embedded in this PDF.
+```
+
+**Override the CSS output path:**
+
+```sh
+mdpdf extract document.pdf --output recovered.md --css-output styles/custom.css
+```
+
+If the PDF was not created by MDPDF the command exits with an error.
 
 ---
 
@@ -301,13 +331,15 @@ You can also manually export and import configurations as JSON files using the *
 | `--one-page`                |       | Fit the entire document into a single PDF page by measuring rendered content dimensions. Compatible with `--scale`. Mutually exclusive with `--manual-breaks`. | `false` |
 | `--manual-breaks`           |       | Suppress automatic page breaks. Break only on explicit CSS indicators in the content (e.g. `break-after: page`). Mutually exclusive with `--one-page`. | `false` |
 | `--cm <KEY=VALUE>`          |       | Add a custom metadata field. Repeatable                                     |              |
+| `--no-embed-css`            |       | Omit the CSS template from the PDF's embedded files. The Markdown source is always embedded. | `false` |
 
 ### `extract`
 
-| Flag / Argument       | Short | Description                                      |              |
-|-----------------------|-------|--------------------------------------------------|--------------|
-| `<INPUT>`             |       | Path to an MDPDF-generated PDF file              | *(required)* |
-| `--output <OUTPUT>`   | `-o`  | Path for the recovered Markdown file             | *(required)* |
+| Flag / Argument             | Short | Description                                                                 |              |
+|-----------------------------|-------|-----------------------------------------------------------------------------|--------------|
+| `<INPUT>`                   |       | Path to an MDPDF-generated PDF file                                         | *(required)* |
+| `--output <OUTPUT>`         | `-o`  | Path for the recovered Markdown file                                        | *(required)* |
+| `--css-output <CSS_OUTPUT>` |       | Path for the recovered CSS file. Defaults to `<output_stem>.css`            |              |
 
 ---
 
@@ -319,10 +351,10 @@ MDPDF processes a document through a well-defined pipeline:
 2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is.
 3. **Template** — The HTML body is wrapped in a full HTML document that includes the selected CSS template and the KaTeX math rendering library (CSS and JS are bundled into the binary at compile time, so no network access is needed).
 4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the pipeline first reads the `@page` margin values from the loaded template stylesheet via JavaScript, then measures the rendered content's `scrollWidth` and `scrollHeight`, adds the margins to both dimensions, injects a `@page` size override to suppress page fragmentation, and passes the result as `paper_width`/`paper_height` to Chrome — producing a single page that fits the content exactly with the template's original spacing intact. If `--manual-breaks` is set, a style is injected that suppresses all automatic `break-before` and `break-after` behaviour on every element that does not carry an explicit inline break rule, leaving author-specified page breaks intact while preventing Chrome from inserting its own.
-5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). Custom metadata fields are written to the PDF's Info dictionary.
+5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). The active CSS template is also embedded by default (pass `--no-embed-css` to skip it). Custom metadata fields are written to the PDF's Info dictionary.
 6. **Clean up** — The temporary HTML file is deleted (unless `--ghtml` was passed).
 
-The `extract` command reverses step 5: it reads the PDF's embedded file tree, locates the attached Markdown file, and writes it back to disk.
+The `extract` command reverses step 5: it reads the PDF's embedded file tree, locates the attached Markdown source and writes it to disk, then attempts to locate the embedded CSS template and writes it alongside (defaulting to `<output_stem>.css`). If the CSS was not embedded (older PDFs or PDFs rendered with `--no-embed-css`), the Markdown is still recovered and the output notes that no CSS was found.
 
 ---
 

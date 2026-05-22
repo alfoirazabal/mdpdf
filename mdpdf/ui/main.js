@@ -348,6 +348,12 @@ function autoPopulateOutput(mdPath) {
   }
 }
 
+function autoPopulateCssOutput(mdOutputPath) {
+  if (!mdOutputPath) return;
+  const cssPath = mdOutputPath.replace(/\.(md|markdown)$/i, '') + '.css';
+  document.getElementById('extract-css-output').value = cssPath;
+}
+
 function setupFilePickers() {
   document.getElementById('render-input-browse').addEventListener('click', async () => {
     const chosen = await pickOpenFile('render-input', [
@@ -365,7 +371,16 @@ function setupFilePickers() {
   });
 
   document.getElementById('extract-output-browse').addEventListener('click', () => {
-    pickSaveFile('extract-output', [{ name: 'Markdown', extensions: ['md', 'markdown'] }]);
+    const chosen = pickSaveFile('extract-output', [{ name: 'Markdown', extensions: ['md', 'markdown'] }]);
+    chosen.then(path => { if (path) autoPopulateCssOutput(path); });
+  });
+
+  document.getElementById('extract-css-output-browse').addEventListener('click', () => {
+    pickSaveFile('extract-css-output', [{ name: 'CSS', extensions: ['css'] }]);
+  });
+
+  document.getElementById('extract-output').addEventListener('input', e => {
+    autoPopulateCssOutput(e.target.value);
   });
 }
 
@@ -487,6 +502,7 @@ function setupRenderButton() {
     const allowHtml    = document.getElementById('opt-allow-html').checked;
     const onePage      = document.getElementById('opt-one-page').checked;
     const manualBreaks = document.getElementById('opt-manual-breaks').checked;
+    const embedCss     = document.getElementById('opt-embed-css').checked;
 
     if (onePage && manualBreaks) {
       alert('Single-page and Manual page breaks cannot be used together.');
@@ -511,6 +527,7 @@ function setupRenderButton() {
           onePage,
           manualBreaks,
           customMetadata,
+          embedCss,
         }
       });
     } catch (err) {
@@ -531,11 +548,13 @@ function setupExtractButton() {
   btn.addEventListener('click', async () => {
     if (extractRunning) return;
 
-    const inputPath  = document.getElementById('extract-input').value.trim();
-    const outputPath = document.getElementById('extract-output').value.trim();
+    const inputPath    = document.getElementById('extract-input').value.trim();
+    const outputPath   = document.getElementById('extract-output').value.trim();
+    const cssOutputPath = document.getElementById('extract-css-output').value.trim();
 
-    if (!inputPath)  { alert('Please select an input PDF file.'); return; }
-    if (!outputPath) { alert('Please specify an output Markdown path.'); return; }
+    if (!inputPath)    { alert('Please select an input PDF file.'); return; }
+    if (!outputPath)   { alert('Please specify an output Markdown path.'); return; }
+    if (!cssOutputPath) { alert('Please specify an output CSS path.'); return; }
 
     extractRunning = true;
     btn.disabled   = true;
@@ -543,7 +562,7 @@ function setupExtractButton() {
 
     try {
       await invoke('extract_markdown', {
-        params: { inputPath, outputPath }
+        params: { inputPath, outputPath, cssOutputPath }
       });
     } catch (err) {
       const msg = (err && err.message) ? err.message : String(err);
@@ -567,6 +586,7 @@ function gatherConfig() {
     onePage: document.getElementById('opt-one-page').checked,
     manualBreaks: document.getElementById('opt-manual-breaks').checked,
     metadata: collectMetadataObjects(),
+    embedCss: document.getElementById('opt-embed-css').checked,
   };
 }
 
@@ -595,6 +615,9 @@ function applyConfig(config) {
   }
   if (config.manualBreaks != null) {
     document.getElementById('opt-manual-breaks').checked = config.manualBreaks;
+  }
+  if (config.embedCss != null) {
+    document.getElementById('opt-embed-css').checked = config.embedCss;
   }
   if (config.metadata && Array.isArray(config.metadata)) {
     document.getElementById('metadata-list').innerHTML = '';
@@ -709,7 +732,7 @@ async function init() {
   observer.observe(document.getElementById('metadata-list'), { childList: true, subtree: true });
 
   // Auto-save on relevant input changes
-  document.querySelectorAll('#opt-scale, #opt-ghtml, #opt-allow-html, #opt-one-page, #opt-manual-breaks')
+  document.querySelectorAll('#opt-scale, #opt-ghtml, #opt-allow-html, #opt-one-page, #opt-manual-breaks, #opt-embed-css')
     .forEach(el => el.addEventListener('change', scheduleAutoSave));
   document.getElementById('template-select').addEventListener('change', scheduleAutoSave);
 

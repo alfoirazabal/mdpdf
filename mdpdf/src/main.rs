@@ -91,7 +91,8 @@ async fn run_cli() -> Result<()> {
             allow_html,
             one_page,
             manual_breaks,
-            scale
+            scale,
+            no_embed_css,
         } => {
             if one_page && manual_breaks {
                 eprintln!("ERROR: --one-page and --manual-breaks are mutually exclusive. Use one or the other.");
@@ -111,6 +112,7 @@ async fn run_cli() -> Result<()> {
             let html_body = markdown::to_html(&md, allow_html || manual_breaks)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ApplyingTemplate));
+            let css_content = templates::get_css_content(template.clone(), custom_template_path.clone());
             let full_html = templates::wrap_html(&html_body, &title, template, custom_template_path);
 
             let temp_html = format!("{}{}", output_filename, ".html");
@@ -120,7 +122,8 @@ async fn run_cli() -> Result<()> {
             pdf::html_to_pdf(&temp_html, &output_filename, &scale, one_page, manual_breaks).await?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::AttachingMdToPdf));
-            embed::attach_file_and_embed_metadata(&output_filename, &input, &custom_metadata)?;
+            let css_to_embed = if no_embed_css { None } else { Some(css_content.as_str()) };
+            embed::attach_file_and_embed_metadata(&output_filename, &input, &custom_metadata, css_to_embed)?;
 
             if !generate_html {
                 match fs::remove_file(&temp_html) {
@@ -134,9 +137,27 @@ async fn run_cli() -> Result<()> {
 
             println!("Done: {}", output);
         }
-        Commands::Extract { input, output } => {
-            match extract::extract_file(&input, &output) {
-                Ok(()) => {
+        Commands::Extract { input, output, css_output } => {
+            let css_output_path = css_output.unwrap_or_else(|| {
+                let stem = Path::new(&output)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("output");
+                let parent = Path::new(&output).parent()
+                    .filter(|p| *p != Path::new(""))
+                    .map(|p| p.to_string_lossy().to_string() + "/")
+                    .unwrap_or_default();
+                format!("{}{}.css", parent, stem)
+            });
+
+            match extract::extract_file(&input, &output, &css_output_path) {
+                Ok(result) => {
+                    println!("Extracted Markdown → {}", output);
+                    if result.css_extracted {
+                        println!("Extracted CSS template → {}", css_output_path);
+                    } else {
+                        println!("Note: No CSS template was embedded in this PDF.");
+                    }
                     std::process::exit(0);
                 },
                 Err(err) => {

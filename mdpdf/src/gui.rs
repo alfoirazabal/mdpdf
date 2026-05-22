@@ -181,6 +181,7 @@ pub struct AppConfig {
     one_page: Option<bool>,
     manual_breaks: Option<bool>,
     metadata: Option<Vec<MetadataEntry>>,
+    embed_css: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -263,6 +264,7 @@ pub struct RenderParams {
     one_page: bool,
     manual_breaks: bool,
     custom_metadata: Vec<String>,
+    embed_css: bool,
 }
 
 #[tauri::command]
@@ -328,10 +330,12 @@ pub async fn render_pdf(app: AppHandle, params: RenderParams) -> Result<(), Stri
     .map_err(|e| format!("PDF conversion failed: {}", e))?;
 
     emit_progress(&app, "render_progress", "Attaching Markdown to PDF…", 85, false, None);
+    let css_to_embed = if params.embed_css { Some(params.css.as_str()) } else { None };
     crate::embed::attach_file_and_embed_metadata(
         &output_filename,
         &params.input_path,
         &params.custom_metadata,
+        css_to_embed,
     )
     .map_err(|e| format!("Failed to embed source: {}", e))?;
 
@@ -359,21 +363,52 @@ pub async fn render_pdf(app: AppHandle, params: RenderParams) -> Result<(), Stri
 pub struct ExtractParams {
     input_path: String,
     output_path: String,
+    css_output_path: String,
 }
 
 #[tauri::command]
 pub async fn extract_markdown(app: AppHandle, params: ExtractParams) -> Result<(), String> {
     let output_path = resolve_output_path(&params.input_path, &params.output_path);
+    let css_output_path = resolve_output_path(&params.input_path, &params.css_output_path);
 
-    emit_progress(&app, "extract_progress", "Extracting Markdown from PDF…", 50, false, None);
+    emit_progress(&app, "extract_progress", "Extracting from PDF…", 50, false, None);
 
-    crate::extract::extract_file(&params.input_path, &output_path)
+    let result = crate::extract::extract_file(&params.input_path, &output_path, &css_output_path)
         .map_err(|e| e.to_string())?;
 
     emit_progress(
         &app,
         "extract_progress",
-        &format!("Done! Saved to {}", output_path),
+        &format!("Extracted Markdown → {}", output_path),
+        80,
+        false,
+        None,
+    );
+
+    if result.css_extracted {
+        emit_progress(
+            &app,
+            "extract_progress",
+            &format!("Extracted CSS template → {}", css_output_path),
+            95,
+            false,
+            None,
+        );
+    } else {
+        emit_progress(
+            &app,
+            "extract_progress",
+            "Note: No CSS template was embedded in this PDF.",
+            95,
+            false,
+            None,
+        );
+    }
+
+    emit_progress(
+        &app,
+        "extract_progress",
+        "Done!",
         100,
         true,
         None,

@@ -63,6 +63,10 @@ pub enum Commands {
         /// Separate key from value with `=`.
         #[arg(long = "cm", action = clap::ArgAction::Append, num_args(1..))]
         custom_metadata: Vec<String>,
+
+        /// Disable embedding the CSS template into the PDF (embedded by default).
+        #[arg(long = "no-embed-css", default_value_t = false)]
+        no_embed_css: bool,
     },
 
     /// Extract embedded Markdown from PDF
@@ -73,5 +77,9 @@ pub enum Commands {
         /// Output markdown file
         #[arg(short, long)]
         output: String,
+
+        /// Output CSS file (defaults to <output_stem>.css)
+        #[arg(long = "css-output")]
+        css_output: Option<String>,
     },
 }
