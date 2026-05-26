@@ -2278,6 +2278,7 @@ dependencies = [
  "lopdf",
  "serde",
  "serde_json",
+ "syntect",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

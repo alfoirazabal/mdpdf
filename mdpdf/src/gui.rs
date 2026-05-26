@@ -300,7 +300,7 @@ pub async fn render_pdf(app: AppHandle, params: RenderParams) -> Result<(), Stri
         .map_err(|e| format!("Cannot read input file: {}", e))?;
 
     emit_progress(&app, "render_progress", "Converting to HTML…", 25, false, None);
-    let html_body = crate::markdown::to_html(&md, params.allow_html || params.manual_breaks)
+    let html_body = crate::markdown::to_html(&md, params.allow_html || params.manual_breaks, &params.css)
         .map_err(|e| e.to_string())?;
 
     emit_progress(&app, "render_progress", "Applying template…", 40, false, None);
