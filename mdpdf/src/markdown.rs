@@ -19,21 +19,9 @@ use syntect::util::LinesWithEndings;
 /// (perceived luminance below 0.5). Falls back to `false` (light) if no color
 /// can be found.
 fn code_bg_is_dark(css: &str) -> bool {
-    extract_code_bg_color(css)
+    find_pre_background(css)
         .map(|c| perceived_luminance(c) < 0.5)
         .unwrap_or(false)
-}
-
-fn extract_code_bg_color(css: &str) -> Option<(u8, u8, u8)> {
-    find_css_var(css, "--default-code-background")
-        .or_else(|| find_pre_background(css))
-}
-
-/// Searches for `--name: #rrggbb` and parses the hex color.
-fn find_css_var(css: &str, var_name: &str) -> Option<(u8, u8, u8)> {
-    let needle = format!("{}:", var_name);
-    let after = css.find(needle.as_str()).map(|p| css[p + needle.len()..].trim_start())?;
-    parse_hex_color_prefix(after)
 }
 
 /// Searches the first `pre { … }` block for `background` / `background-color`.
@@ -50,7 +38,7 @@ fn find_pre_background(css: &str) -> Option<(u8, u8, u8)> {
             for prop in &["background-color:", "background:"] {
                 if let Some(p) = block.find(prop) {
                     let val = block[p + prop.len()..].trim_start();
-                    if let Some(rgb) = parse_hex_color_prefix(val) {
+                    if let Some(rgb) = resolve_color(css, val) {
                         return Some(rgb);
                     }
                 }
@@ -61,7 +49,52 @@ fn find_pre_background(css: &str) -> Option<(u8, u8, u8)> {
     }
 }
 
-/// Parses a hex color at the start of `s`: `#rgb` or `#rrggbb`.
+/// Resolves a raw CSS color value to RGB. Handles:
+/// - `#rgb`, `#rrggbb`, `#rrggbbaa` (alpha ignored)
+/// - `rgb(r, g, b)` / `rgba(r, g, b, a)` (alpha ignored)
+/// - `var(--name)` resolved one level deep against the full `css`
+fn resolve_color(css: &str, value: &str) -> Option<(u8, u8, u8)> {
+    let value = value.trim();
+    if let Some(rgb) = parse_hex_color_prefix(value) {
+        return Some(rgb);
+    }
+    if let Some(rgb) = parse_rgb_prefix(value) {
+        return Some(rgb);
+    }
+    if let Some(inner) = value.strip_prefix("var(") {
+        let var_name = inner.split(')').next()?.trim();
+        let raw = find_css_var_raw(css, var_name)?;
+        return parse_hex_color_prefix(raw).or_else(|| parse_rgb_prefix(raw));
+    }
+    None
+}
+
+/// Parses `rgb(r, g, b)` or `rgba(r, g, b, a)` at the start of `s` (alpha ignored).
+fn parse_rgb_prefix(s: &str) -> Option<(u8, u8, u8)> {
+    let s = s.trim_start();
+    let inner = s.strip_prefix("rgb(")
+        .or_else(|| s.strip_prefix("rgba("))?
+        .split(')')
+        .next()?;
+    let parts: Vec<u8> = inner
+        .split(|c: char| c == ',' || c.is_ascii_whitespace())
+        .filter(|t| !t.is_empty())
+        .take(3)
+        .map(|t| t.trim().parse::<u8>().ok())
+        .collect::<Option<Vec<_>>>()?;
+    if parts.len() == 3 { Some((parts[0], parts[1], parts[2])) } else { None }
+}
+
+/// Finds `--var-name: <value>` anywhere in `css` and returns the raw value string.
+fn find_css_var_raw<'a>(css: &'a str, var_name: &str) -> Option<&'a str> {
+    let needle = format!("{}:", var_name);
+    let pos = css.find(needle.as_str())?;
+    let after = css[pos + needle.len()..].trim_start();
+    let end = after.find(|c: char| c == ';' || c == '\n').unwrap_or(after.len());
+    Some(after[..end].trim_end())
+}
+
+/// Parses a hex color at the start of `s`: `#rgb`, `#rrggbb`, or `#rrggbbaa` (alpha ignored).
 fn parse_hex_color_prefix(s: &str) -> Option<(u8, u8, u8)> {
     let s = s.trim_start();
     if !s.starts_with('#') {
@@ -69,7 +102,7 @@ fn parse_hex_color_prefix(s: &str) -> Option<(u8, u8, u8)> {
     }
     let hex: String = s[1..].chars().take_while(|c| c.is_ascii_hexdigit()).collect();
     match hex.len() {
-        6 => Some((
+        6 | 8 => Some((
             u8::from_str_radix(&hex[0..2], 16).ok()?,
             u8::from_str_radix(&hex[2..4], 16).ok()?,
             u8::from_str_radix(&hex[4..6], 16).ok()?,
