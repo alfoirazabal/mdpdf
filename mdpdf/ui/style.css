@@ -530,3 +530,51 @@ details[open] .options-summary::before { transform: rotate(90deg); }
 .log-line { line-height: 1.5; }
 .log-line.log-success { color: var(--success); }
 .log-line.log-error   { color: var(--error); }
+
+/* ─── About tab ──────────────────────────────────────────────────────────── */
+.about-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 18px;
+  padding: 32px;
+}
+
+.about-logo {
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.about-app-name {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+  color: var(--text);
+}
+
+.about-table {
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 320px;
+}
+
+.about-table th,
+.about-table td {
+  padding: 8px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.about-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  width: 110px;
+}
+
+.about-table td {
+  color: var(--text);
+}

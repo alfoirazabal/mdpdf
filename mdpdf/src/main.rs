@@ -109,10 +109,10 @@ async fn run_cli() -> Result<()> {
             let md = fs::read_to_string(&input)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ConvertingToHtml));
-            let html_body = markdown::to_html(&md, allow_html || manual_breaks)?;
+            let css_content = templates::get_css_content(template.clone(), custom_template_path.clone());
+            let html_body = markdown::to_html(&md, allow_html || manual_breaks, &css_content)?;
 
             println!("{}", message_provider.get_message(status_messages::StatusMessage::ApplyingTemplate));
-            let css_content = templates::get_css_content(template.clone(), custom_template_path.clone());
             let full_html = templates::wrap_html(&html_body, &title, template, custom_template_path);
 
             let temp_html = format!("{}{}", output_filename, ".html");

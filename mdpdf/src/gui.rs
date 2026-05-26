@@ -300,7 +300,7 @@ pub async fn render_pdf(app: AppHandle, params: RenderParams) -> Result<(), Stri
         .map_err(|e| format!("Cannot read input file: {}", e))?;
 
     emit_progress(&app, "render_progress", "Converting to HTML…", 25, false, None);
-    let html_body = crate::markdown::to_html(&md, params.allow_html || params.manual_breaks)
+    let html_body = crate::markdown::to_html(&md, params.allow_html || params.manual_breaks, &params.css)
         .map_err(|e| e.to_string())?;
 
     emit_progress(&app, "render_progress", "Applying template…", 40, false, None);
@@ -426,6 +426,29 @@ pub fn get_template_css(template_name: String) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// get_about_info command
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AboutInfo {
+    app_name: String,
+    dev_name: String,
+    version: String,
+    license: String,
+}
+
+#[tauri::command]
+pub fn get_about_info() -> AboutInfo {
+    AboutInfo {
+        app_name: "MDPDF".to_string(),
+        dev_name: crate::constants::DEV_NAME.to_string(),
+        version: crate::constants::VERSION.to_string(),
+        license: "GNU General Public License v3 (GPL-3.0)".to_string(),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // App entry point for GUI mode
 // ---------------------------------------------------------------------------
 
@@ -436,6 +459,7 @@ pub fn run() {
             render_pdf,
             extract_markdown,
             get_template_css,
+            get_about_info,
             save_config,
             load_config,
             export_config,

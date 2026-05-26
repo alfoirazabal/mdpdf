@@ -32,6 +32,7 @@ MDPDF is a fast, self-contained tool written in Rust that converts Markdown file
 - Converts any Markdown file to a styled, print-ready PDF
 - 11 built-in templates across mobile, tablet, widescreen, and A4 print layouts — each available in light and dark variants
 - Custom CSS template support for full visual control — live CSS editor in the GUI
+- Syntax-highlighted fenced code blocks powered by [syntect](https://github.com/trishume/syntect) — theme (dark or light) is chosen automatically from the `pre` background color declared in the active CSS template
 - KaTeX math rendering built in — no external CDN required
 - Markdown extensions: tables, footnotes, and strikethrough
 - Optional raw HTML passthrough — keep `<div>`, `<span>`, custom tags, and inline styles intact in the output
@@ -277,6 +278,18 @@ When `--custom-template-path` is set, `--template` is ignored.
 
 In the GUI, select any built-in template to populate the editor with its CSS, then modify it freely — the editor content is what gets rendered.
 
+### Code block syntax highlighting
+
+The syntax highlighting theme for fenced code blocks is selected automatically from the CSS template. MDPDF reads the `background` or `background-color` property of the first `pre { }` rule and resolves it to an RGB value. The following color formats are supported:
+
+- Hex literals: `#rgb`, `#rrggbb`, `#rrggbbaa` (alpha channel ignored)
+- RGB/RGBA functions: `rgb(r, g, b)`, `rgba(r, g, b, a)` (alpha ignored)
+- CSS variable references: `var(--any-name)` — resolved one level deep to wherever the variable is defined elsewhere in the CSS
+
+If the resolved background has a perceived luminance below 0.5 (dark), the `base16-ocean.dark` highlighting theme is applied. Otherwise `InspiredGitHub` (light) is used. If no color can be resolved, the light theme is the fallback.
+
+The `pre` element itself is rendered without a forced background color — the CSS template has full control over it.
+
 ---
 
 ## PDF Metadata
@@ -348,7 +361,7 @@ You can also manually export and import configurations as JSON files using the *
 MDPDF processes a document through a well-defined pipeline:
 
 1. **Read** — The input `.md` file is read from disk.
-2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is.
+2. **Parse** — The Markdown is parsed to HTML using [comrak](https://github.com/kivikakk/comrak) with tables, footnotes, and strikethrough enabled. By default, raw HTML tags and unsafe link schemes embedded in the source are stripped. Passing `--allow-html` disables that sanitisation and lets them through as-is. Fenced code blocks are syntax-highlighted using [syntect](https://github.com/trishume/syntect). The highlighting theme is chosen automatically by inspecting the `background` or `background-color` property of the `pre { }` block in the active CSS template: if the resolved color has a perceived luminance below 0.5 the dark theme (`base16-ocean.dark`) is used, otherwise the light theme (`InspiredGitHub`) is used. The resolver handles hex colors (`#rgb`, `#rrggbb`, `#rrggbbaa`), `rgb()`/`rgba()` functions, and `var(--name)` references (resolved one level deep to wherever the variable is defined in the CSS). Token foreground colors are written as inline spans; no background color is forced on the `<pre>` element, so the CSS template has full control over it.
 3. **Template** — The HTML body is wrapped in a full HTML document that includes the selected CSS template and the KaTeX math rendering library (CSS and JS are bundled into the binary at compile time, so no network access is needed).
 4. **Render** — A temporary HTML file is written to disk and opened in headless Chrome via [headless_chrome](https://github.com/rust-headless-chrome/rust-headless-chrome). Chrome prints the page to PDF with zero margins, full background printing, and an auto-generated document outline. If `--one-page` is set, the pipeline first reads the `@page` margin values from the loaded template stylesheet via JavaScript, then measures the rendered content's `scrollWidth` and `scrollHeight`, adds the margins to both dimensions, injects a `@page` size override to suppress page fragmentation, and passes the result as `paper_width`/`paper_height` to Chrome — producing a single page that fits the content exactly with the template's original spacing intact. If `--manual-breaks` is set, a style is injected that suppresses all automatic `break-before` and `break-after` behaviour on every element that does not carry an explicit inline break rule, leaving author-specified page breaks intact while preventing Chrome from inserting its own.
 5. **Embed** — The original `.md` source file is embedded into the PDF as an attached file using [lopdf](https://github.com/J-F-Liu/lopdf). The active CSS template is also embedded by default (pass `--no-embed-css` to skip it). Custom metadata fields are written to the PDF's Info dictionary.
@@ -383,6 +396,7 @@ cargo test
 | Crate              | Purpose                                              |
 |--------------------|------------------------------------------------------|
 | `comrak`           | Markdown parsing and HTML generation                 |
+| `syntect`          | Syntax highlighting for fenced code blocks           |
 | `headless_chrome`  | Headless Chrome control for HTML-to-PDF rendering    |
 | `lopdf`            | PDF manipulation, file embedding, and metadata       |
 | `clap`             | Command-line argument parsing                        |

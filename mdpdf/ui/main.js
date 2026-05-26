@@ -56,13 +56,20 @@ function updateBottomBarVisibility() {
     extractLog.style.display = 'none';
     renderBar.style.display = '';
     extractBar.style.display = 'none';
-  } else {
+  } else if (activeTab === 'extract') {
     renderBtn.style.display = 'none';
     extractBtn.style.display = '';
     renderLog.style.display = 'none';
     extractLog.style.display = '';
     renderBar.style.display = 'none';
     extractBar.style.display = '';
+  } else {
+    renderBtn.style.display = 'none';
+    extractBtn.style.display = 'none';
+    renderLog.style.display = 'none';
+    extractLog.style.display = 'none';
+    renderBar.style.display = 'none';
+    extractBar.style.display = 'none';
   }
 }
 
@@ -745,4 +752,29 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ---------------------------------------------------------------------------
+// About tab
+// ---------------------------------------------------------------------------
+let aboutLoaded = false;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  if (btn.dataset.tab === 'about') {
+    btn.addEventListener('click', loadAboutInfo);
+  }
+});
+
+async function loadAboutInfo() {
+  if (aboutLoaded) return;
+  try {
+    const info = await invoke('get_about_info');
+    document.getElementById('about-app-name').textContent = info.appName;
+    document.getElementById('about-dev-name').textContent  = info.devName;
+    document.getElementById('about-version').textContent   = info.version;
+    document.getElementById('about-license').textContent   = info.license;
+    aboutLoaded = true;
+  } catch (e) {
+    console.error('Failed to load about info:', e);
+  }
+}
 
