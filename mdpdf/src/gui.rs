@@ -4,8 +4,64 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 // ---------------------------------------------------------------------------
-// Shared progress event payload
+// PDF conversion — GUI wrapper
 // ---------------------------------------------------------------------------
+
+// On Windows the binary is built as a Windows-subsystem app (release) which
+// prevents the conhost Job Object that previously caused ERROR_NOT_SUPPORTED
+// (os error 50) when headless_chrome tried to spawn Chrome.
+//
+// As belt-and-suspenders, PDF conversion is still delegated to a subprocess
+// launched with CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW.  This guards
+// against the WebView2/Tauri Job Object also having child-process restrictions.
+// The subprocess runs the hidden `_html-to-pdf` subcommand and exits.
+// On all other platforms html_to_pdf is called directly.
+
+#[cfg(target_os = "windows")]
+async fn html_to_pdf_for_gui(
+    html: &str,
+    output: &str,
+    scale: f64,
+    one_page: bool,
+    manual_breaks: bool,
+) -> anyhow::Result<()> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
+
+    let exe = std::env::current_exe()?;
+
+    let mut args: Vec<String> = vec![
+        "_html-to-pdf".into(),
+        "--input".into(),  html.to_string(),
+        "--output".into(), output.to_string(),
+        "--scale".into(),  scale.to_string(),
+    ];
+    if one_page      { args.push("--one-page".into()); }
+    if manual_breaks { args.push("--manual-breaks".into()); }
+
+    let status = std::process::Command::new(&exe)
+        .args(&args)
+        .creation_flags(CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB)
+        .status()?;
+
+    if !status.success() {
+        anyhow::bail!("PDF subprocess exited with {}", status);
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+async fn html_to_pdf_for_gui(
+    html: &str,
+    output: &str,
+    scale: f64,
+    one_page: bool,
+    manual_breaks: bool,
+) -> anyhow::Result<()> {
+    crate::pdf::html_to_pdf(html, output, &scale, one_page, manual_breaks).await
+}
+
 
 #[derive(Serialize, Clone)]
 struct ProgressPayload {
@@ -319,15 +375,9 @@ pub async fn render_pdf(app: AppHandle, params: RenderParams) -> Result<(), Stri
         false,
         None,
     );
-    crate::pdf::html_to_pdf(
-        &temp_html,
-        &output_filename,
-        &params.scale,
-        params.one_page,
-        params.manual_breaks,
-    )
-    .await
-    .map_err(|e| format!("PDF conversion failed: {}", e))?;
+    html_to_pdf_for_gui(&temp_html, &output_filename, params.scale, params.one_page, params.manual_breaks)
+        .await
+        .map_err(|e| format!("PDF conversion failed: {}", e))?;
 
     emit_progress(&app, "render_progress", "Attaching Markdown to PDF…", 85, false, None);
     let css_to_embed = if params.embed_css { Some(params.css.as_str()) } else { None };

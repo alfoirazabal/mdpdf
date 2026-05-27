@@ -1,7 +1,20 @@
-// On Windows we do NOT set windows_subsystem = "windows" at compile time.
-// Instead we detach from the console at runtime when launching in GUI mode.
-// This allows CLI invocations to work naturally (the shell waits and output
-// appears correctly) while the GUI still launches without a visible console.
+// In release mode on Windows the binary is built as a Windows (GUI) subsystem
+// application.  This prevents a console window from appearing when the user
+// double-clicks the executable, and eliminates the conhost Job Object that
+// would otherwise restrict Chrome process creation (os error 50).
+//
+// For CLI invocations from cmd / PowerShell we call AttachConsole so that
+// stdout/stderr output is still visible.  Trade-off: because the process is a
+// Windows-subsystem app, cmd/PowerShell return the prompt immediately instead
+// of waiting for the process to finish.  This is standard Windows behaviour
+// for GUI-subsystem executables.
+//
+// Debug builds keep the console subsystem so that cargo run / the debugger
+// show output normally.
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
 
 mod markdown;
 mod templates;
@@ -54,28 +67,27 @@ fn get_message_provider() -> Box<dyn status_messages::MessageFetcher> {
 /// a Tauri/OS-injected flag).
 fn is_cli_invocation() -> bool {
     match std::env::args().nth(1).as_deref() {
-        Some("render") | Some("extract") => true,
+        Some("render") | Some("extract") | Some("_html-to-pdf") => true,
         // Help and version flags should be handled by the CLI parser
         Some("-h") | Some("--help") | Some("-V") | Some("--version") => true,
         _ => false,
     }
 }
 
-/// On Windows, hide and detach the console window when launching in GUI mode.
-/// Since we no longer use `windows_subsystem = "windows"`, the process starts
-/// as a console app. In GUI mode we free the console so no black window appears.
-#[cfg(target_os = "windows")]
-fn detach_console() {
-    unsafe extern "system" {
-        fn FreeConsole() -> i32;
-    }
-    unsafe {
-        FreeConsole();
+/// In release mode on Windows, attach to the parent process's console so that
+/// stdout/stderr are visible when the CLI is invoked from cmd or PowerShell.
+/// In debug builds the process is already a console-subsystem app, so this
+/// is a no-op.  On non-Windows platforms this is always a no-op.
+fn attach_console() {
+    #[cfg(all(not(debug_assertions), target_os = "windows"))]
+    {
+        unsafe extern "system" {
+            fn AttachConsole(dwProcessId: u32) -> i32;
+        }
+        const ATTACH_PARENT_PROCESS: u32 = 0xFFFF_FFFF;
+        unsafe { AttachConsole(ATTACH_PARENT_PROCESS); }
     }
 }
-
-#[cfg(not(target_os = "windows"))]
-fn detach_console() {}
 
 async fn run_cli() -> Result<()> {
     let cli = Cli::parse();
@@ -137,6 +149,9 @@ async fn run_cli() -> Result<()> {
 
             println!("Done: {}", output);
         }
+        Commands::HtmlToPdf { input, output, scale, one_page, manual_breaks } => {
+            pdf::html_to_pdf(&input, &output, &scale, one_page, manual_breaks).await?;
+        }
         Commands::Extract { input, output, css_output } => {
             let css_output_path = css_output.unwrap_or_else(|| {
                 let stem = Path::new(&output)
@@ -173,13 +188,13 @@ async fn run_cli() -> Result<()> {
 
 fn main() {
     if is_cli_invocation() {
+        attach_console();
         let rt = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
         if let Err(e) = rt.block_on(run_cli()) {
             eprintln!("ERROR: {}", e);
             std::process::exit(1);
         }
     } else {
-        detach_console();
         gui::run();
     }
 }
