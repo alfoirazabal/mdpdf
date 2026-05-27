@@ -8,7 +8,7 @@ const CHROME_DPI: f64 = 96.0;
 
 pub async fn html_to_pdf(input: &str, output: &str, scale: &f64, one_page: bool, manual_breaks: bool) -> Result<()> {
 
-    let path = std::fs::canonicalize(input)?;
+    let path = std::path::absolute(input)?;
     let url = Url::from_file_path(&path)
         .map_err(|_| anyhow::anyhow!("Invalid file path"))?;
 

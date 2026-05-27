@@ -69,6 +69,34 @@ pub enum Commands {
         no_embed_css: bool,
     },
 
+    /// Internal: convert an already-rendered HTML file to PDF.
+    /// Used by the GUI on Windows to escape Job Object child-process restrictions
+    /// (WebView2 sets PROCESS_CREATION_CHILD_PROCESS_RESTRICTED on the host process,
+    /// causing CreateProcess to fail with ERROR_NOT_SUPPORTED unless the subprocess
+    /// is launched with CREATE_BREAKAWAY_FROM_JOB).
+    #[command(name = "_html-to-pdf", hide = true)]
+    HtmlToPdf {
+        /// Input HTML file (already rendered)
+        #[arg(long)]
+        input: String,
+
+        /// Output PDF file
+        #[arg(long)]
+        output: String,
+
+        /// Scale factor for the PDF
+        #[arg(long, default_value_t = 1.0)]
+        scale: f64,
+
+        /// Fit content into a single page
+        #[arg(long, default_value_t = false)]
+        one_page: bool,
+
+        /// Honour only explicit break-after: page markers
+        #[arg(long, default_value_t = false)]
+        manual_breaks: bool,
+    },
+
     /// Extract embedded Markdown from PDF
     Extract {
         /// Input PDF file
